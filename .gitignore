@@ -1,0 +1,15 @@
+# Bí mật — không bao giờ commit
+.env
+*.env
+# Sinh ra khi chạy
+__pycache__/
+.pytest_cache/
+test_out/
+recordings/
+voice/
+# File lớn (model, video): giữ ngoài git
+*.pt
+*.ts
+*.mp4
+*.MOV
+*.mov
