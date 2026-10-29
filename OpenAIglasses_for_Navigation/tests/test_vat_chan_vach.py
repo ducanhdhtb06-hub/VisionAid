@@ -696,3 +696,17 @@ def test_dang_dung_tren_vach_thi_khong_o_long_duong():
     assert o_long_duong(True, tren_vach=False)
     assert not o_long_duong(True, tren_vach=True)
     assert not o_long_duong(False, tren_vach=False)
+
+
+def test_vua_bao_vat_thi_lenh_sau_chi_noi_lenh():
+    # IMG_7355 137,2/138,5 s (29/10): "Xe máy, phía trước" rồi 1,3 s sau "Dừng lại. Xe máy" về cùng chiếc xe -> lặp.
+    # Cùng vật vừa nói < 3 s mà giờ có lệnh: chỉ nói lệnh.
+    from ne_vat_can_do_sau import K
+    sp = K.Speaker(im_xa=True, noi_khoang_cach=False)
+    dung = []
+    sp.clip = lambda k: (dung.append(k), np.zeros(10, np.int16))[1]
+    xe = dict(dist=2.8, high=False, side="phía trước")
+    assert sp.update(10.0, xe, "motorcycle") and not sp.ngan
+    dung.clear()
+    assert sp.update(11.3, dict(xe, dist=2.4), "motorcycle", act="dung_lai") and sp.ngan
+    assert dung == ["dung_lai"]

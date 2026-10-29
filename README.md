@@ -30,7 +30,7 @@ OpenAIglasses_for_Navigation/
   workflow_blindpath.py   ghép tất cả vào luồng dẫn đường (BlindPathNavigator)
   audio_*.py, obstacle_detector_client.py, crosswalk_awareness.py   module hỗ trợ từ dự án gốc (để chạy được test)
   tools/esp32_ao/         "kính ESP32 ảo": phát lại video như camera kính thật (56°, mạng chậm), quét câu mâu thuẫn
-  tests/                  222 test (pytest)
+  tests/                  224 test (pytest)
   docs/superpowers/       thiết kế (specs) và kế hoạch (plans) từng giai đoạn
 thu_nghiem_do_sau/
   ket_hop_3_model.py      lõi độ sâu + nhận diện + theo dõi vật + bộ nói (Speaker)
@@ -43,7 +43,7 @@ thu_nghiem_do_sau/
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cd OpenAIglasses_for_Navigation
-python -m pytest tests -q          # 222 test, không cần GPU / model
+python -m pytest tests -q          # 224 test, không cần GPU / model
 ```
 
 Chạy thật trên camera cần thêm phần còn lại của dự án gốc
@@ -63,3 +63,10 @@ Không có khóa API nào trong mã; nếu dùng phần chat của dự án gố
 ## Giấy phép
 
 Mã ở đây theo **MIT** (xem `LICENSE`; phần lấy từ dự án gốc giữ bản quyền AI-FanGe).
+
+## Giới hạn đã biết
+
+- Ước lượng "xe đang tới" chỉ dựa vào độ sâu từ một camera: khi người quay đầu nhanh, xe đỗ bên cạnh có thể bị báo nhầm
+  là đang tới. Cần cảm biến chuyển động (IMU) trên kính để bù.
+- Đôi khi gọi sai tên vật (xe máy -> "Ô tô"); hướng đi vòng vẫn đúng.
+- Nhận lòng đường / vỉa hè đôi khi nhầm khi người ở trên vỉa hè nhưng không đứng trên vạch.

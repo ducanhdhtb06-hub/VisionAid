@@ -1656,9 +1656,9 @@ class BlindPathNavigator:
                 return False
             if yen:
                 # xe đỗ ngay trước mặt mà không phân loại được (xe che kín vạch / mất đo vạch): bộ điều khiển bảo vòng
-                # (người dùng 29/10, IMG_7354 325,7 s); đo được vạch (biết vật có trên vạch không) thì chỉ báo
-                # thông tin (khiem 57,9 s: người nhìn chéo, "phía trước" camera không phải lối trên vạch)
-                if loai == "chan" or (truoc_gan(o) and do is None):
+                # (người dùng 29/10, IMG_7354 325,7 s; đang đứng trên vạch: khiem 131 s); đo được là người ngoài vạch
+                # thì chỉ báo thông tin (khiem 57,9 s: người nhìn chéo, "phía trước" camera không phải lối trên vạch)
+                if loai == "chan" or (truoc_gan(o) and (do is None or tren)):
                     return False
                 return "tin" if truoc_gan(o) else False
             return o['dist'] <= D_NOI if loai == "chan" else truoc_gan(o)
@@ -1673,13 +1673,15 @@ class BlindPathNavigator:
         from vat_chan_vach import D_THEO
         ne, dv, do, nho = self.ne_vat_can, self.dan_vach, self._do_vach_moi(t), self.nho_vat_chan
         theo = dv.dang_theo_vach(t, T_THEO_LAU)
+        tren = self.bo_vat_chan.tren_gan(t, dv.da_tren_vach(t))
         vat = None
         for o in getattr(ne, "cand", None) or []:            # đã xếp theo khoảng cách
             # xe đỗ vừa thấy, đi ngang thì YOLOE lập vết mới / tốc độ ngang thoáng qua: vẫn là xe đỗ đó
             yen = ne.dung_yen(o) or (nho.tiep(t, o['dist']) and ne.co_the_dang_do(o))
             loai = nho.loai(t, phan_loai_vat(o, do, ne.geo, dv.hw), o['dist']) if yen and not o.get('high') else None
-            if loai == "khong_chac" and theo and do is None and o.get('side') == 'phía trước' and o['dist'] <= D_THEO:
-                loai = "chan"                                # mất đo vạch, giữa lối đi (lệch trục <= 0,2 m): xe che kín vạch
+            if loai == "khong_chac" and theo and (do is None or tren) and o.get('side') == 'phía trước' \
+                    and o['dist'] <= D_THEO:
+                loai = "chan"                  # mất đo vạch / đang trên vạch, giữa lối đi (lệch trục <= 0,2 m): chắn đường
             if loai == "chan":
                 en, vi = ne.ten_vat(o)
                 vi = ten_noi(en, vi)

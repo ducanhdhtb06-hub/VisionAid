@@ -460,12 +460,32 @@ def test_xe_do_vua_thay_lech_ngang_thoang_qua_van_la_xe_do(wb, monkeypatch):
     assert CAU_NE not in cau
 
 
-def test_do_duoc_vach_ma_xe_khong_phan_loai_duoc_chi_bao_tin(wb, monkeypatch):
-    # khiem 57,9 s (29/10): đo được vạch nhưng người nhìn chéo sang trái vạch ("Rẽ phải một chút"), xe đỗ "phía trước"
-    # camera không nằm trên vạch -> "Ô tô chắn vạch" sai. Đo được vạch thì "phía trước" camera không phải lối đi trên
-    # vạch: chỉ báo thông tin như cũ.
+def test_nhin_cheo_ngoai_vach_xe_khong_phan_loai_duoc_chi_bao_tin(wb, monkeypatch):
+    # khiem 57,9 s (29/10): đo được vạch, người KHÔNG đứng trên vạch (nhìn chéo, "Rẽ phải một chút"), xe đỗ "phía trước"
+    # camera không nằm trên vạch -> "Ô tô chắn vạch" sai. Chỉ báo thông tin như cũ.
+    import dan_theo_vach
+    gio = [0.0]
+    nav = _nav(wb, monkeypatch, gio)
+    nav.ne_vat_can = ne = _NeVatChan()
+    goc = dat_vat_3d(ne.geo, -0.15, 0.15, 2.8)
+    monkeypatch.setattr(dan_theo_vach, "phan_loai_vat", lambda *a, **k: "khong_chac")
+    that = nav.dan_vach.da_tren_vach
+    monkeypatch.setattr(nav.dan_vach, "da_tren_vach", lambda t: t < 3.0 and that(t))   # đo được vạch, người ngoài vạch
+
+    def moi_khung(da_noi):
+        d = 4.6 - 0.7 * (gio[0] - 6.0)
+        ne.cand = [dict(goc, dist=d)] if gio[0] >= 6.0 and d > 0.3 else []
+    da_noi, _ = _chay_pf(nav, gio, [ve_vach(0, 0)] * 110, wb, monkeypatch, moi_khung)
+    assert not any("chắn" in c for _, c in da_noi)
+
+
+def test_tren_vach_vat_giua_loi_khong_phan_loai_duoc_bao_vong(wb, monkeypatch):
+    # khiem 131,1 s (29/10, lượt cuối): người đang đứng trên vạch, ô tô đỗ giữa lối không phân loại được -> "Ô tô, phía
+    # trước" rồi 1 s sau mới "Ô tô chắn vạch. Đi sang trái." Đứng trên vạch, vật đứng yên giữa lối (lệch trục <= 0,2 m)
+    # là chắn đường -> bảo vòng ngay, không câu thông tin.
     _, cau = _chay_xe_toi(wb, monkeypatch, lambda d, t: "khong_chac")
-    assert not any("chắn" in c for c in cau)
+    assert sum("Đi sang trái" in c for c in cau) == 1
+    assert CAU_NE not in cau
 
 
 def test_xe_che_kin_vach_mat_do_vach_lau_van_bao_vong(wb, monkeypatch):

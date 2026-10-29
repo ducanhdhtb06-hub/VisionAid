@@ -157,3 +157,8 @@ Thêm (29/10, cùng mục tiêu "mọi trường hợp giống demo"):
   -> "Dừng lại." -> 0,2 s sau "Đi sang trái." về phía xe). Bộ quét thêm loại `vong_ve_phia_xe`.
   Vừa báo xe đang tới < 3 s (khoảng "cùng một xe" của Speaker) cũng chưa bảo vòng: xe giảm tốc hết cờ "đang tới" nhưng
   vẫn đang đi ngang (IMG_7357 67,6 -> 68,6 s).
+- Cùng vật vừa được nói < 3 s mà giờ có lệnh: chỉ nói lệnh (`Speaker.ngan`, mở rộng từ "đang tới" sang câu thông tin;
+  IMG_7355 137 s "Xe máy, phía trước" rồi "Dừng lại. Xe máy").
+- Vật đứng yên giữa lối (lệch trục <= 0,2 m) trong 5 m, không phân loại được: là vật chắn khi MẤT đo vạch hoặc khi đo
+  được người đang ĐỨNG TRÊN vạch (khiem 131 s: "Ô tô, phía trước" rồi 1 s sau mới bảo vòng). Người đo được ở ngoài
+  vạch (nhìn chéo, khiem 57,9 s) -> vẫn chỉ báo thông tin.

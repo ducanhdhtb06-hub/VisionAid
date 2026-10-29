@@ -688,7 +688,8 @@ class Speaker:
             if act and act != L['act']:
                 # có lệnh mới; xe vừa được báo "đang tới" < 3 s: chỉ nói lệnh (IMG_7358 88 s, 29/10: "Xe máy, bên
                 # trái, đang tới" rồi ngay sau "Dừng lại. Xe máy, bên trái, đang tới" -> lặp)
-                self.ngan = bool(toi and L['toi'] and t - self.last_t < 3.0)
+                # cũng vậy khi vật vừa được báo thông tin (IMG_7355 137 s: "Xe máy, phía trước" rồi "Dừng lại. Xe máy")
+                self.ngan = bool(toi == L['toi'] and t - self.last_t < 3.0)
             elif toi and not L['toi'] and not act:
                 pass                              # vật bắt đầu đi về phía mình
             elif d <= 2 < L['d'] and t - self.last_t >= 1.5:
