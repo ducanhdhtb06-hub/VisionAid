@@ -1,6 +1,6 @@
-# glassai — Kính AI cho người khiếm thị: chỉ đường theo vạch + quan sát nhờ API
+# VisionAid – Kính thông minh tích hợp AI
 
-Hai module của kính AI glassai:
+**VisionAid** là kính thông minh tích hợp AI dành cho người khiếm thị. Bản này gồm hai module:
 
 1. **Chỉ đường theo vạch** (gạch dẫn đường / vạch xúc giác): camera trên kính nhìn vạch và vật cản phía trước, nói hướng
    đi bằng tiếng Việt.
@@ -12,7 +12,7 @@ Hai module của kính AI glassai:
 
 ## Demo
 
-**Video đầy đủ (3 phút 33 giây, có tiếng): [xem / tải tại mục Releases](https://github.com/ducanhdhtb06-hub/glassai/releases/tag/demo-v0.1)**
+**Video đầy đủ (3 phút 33 giây, có tiếng): [xem / tải tại mục Releases](https://github.com/ducanhdhtb06-hub/VisionAid/releases/tag/demo-v0.1)**
 
 | Module 1: chỉ đường theo vạch | Module 2: quan sát nhờ API |
 |---|---|
