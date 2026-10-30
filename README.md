@@ -9,8 +9,9 @@
 
 ## Tác giả
 
-**VisionAid do Đặng Đức Anh phát triển**, xây dựng trên nền dự án mã nguồn mở
-[OpenAIglasses_for_Navigation](https://github.com/AI-FanGe/OpenAIglasses_for_Navigation) (AI-FanGe, giấy phép MIT).
+**VisionAid do Đặng Đức Anh phát triển.** Bản MVP này dùng dự án mã nguồn mở
+[OpenAIglasses_for_Navigation](https://github.com/AI-FanGe/OpenAIglasses_for_Navigation) (AI-FanGe, giấy phép MIT) làm
+nền để chạy thử nhanh; các thành phần lấy từ dự án gốc sẽ được thay bằng mã tự phát triển ở giai đoạn sau.
 
 **Phần do tác giả phát triển:**
 - **Module chỉ đường theo vạch:** đo hai mép vạch và độ lệch, luật nói "dịch trái/phải", bộ điều khiển vật chắn trên vạch
