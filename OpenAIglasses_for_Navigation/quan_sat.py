@@ -37,7 +37,7 @@ KW_QUAN_SAT = ["phía trước", "trước mặt", "xung quanh", "quan sát", "m
                "nhìn xem", "nhìn giúp", "xem giúp", "giúp tôi xem", "là gì", "có gì", "đọc giúp", "đọc chữ",
                "màu gì", "hạn dùng", "bao nhiêu tiền"]
 
-_oai = None                                      # client dùng chung: giữ kết nối, khỏi bắt tay TLS mỗi lần hỏi
+_oai = None                                      # client dùng chung: giữ kết ghep, khỏi bắt tay TLS mỗi lần hỏi
 _http = None
 
 
@@ -154,3 +154,32 @@ async def lam_nong():
         print("[QUAN_SAT] Đã làm nóng Gemini", flush=True)
     except Exception as e:
         print(f"[QUAN_SAT] Làm nóng Gemini lỗi (bỏ qua): {e}", flush=True)
+
+
+def cat_doan_noi(a, sr: int = 16000, khung: float = 0.05, nghi_toi_da: float = 0.5, dai_toi_thieu: float = 0.4):
+    """Tìm các đoạn có người nói trong âm thanh mono `a` (float, [-1, 1]): [(bắt đầu giây, kết thúc giây)].
+
+    Ngưỡng theo mức ồn nền của chính đoạn thu (trung vị năng lượng) nên chạy được trên video quay ngoài đường lẫn
+    trong nhà. Quãng nghỉ ngắn hơn `nghi_toi_da` được ghep lại (một câu); đoạn ngắn hơn `dai_toi_thieu` (tiếng động) bỏ."""
+    n = int(sr * khung)
+    if len(a) < n:
+        return []
+    nang = np.sqrt((a[:len(a) // n * n].reshape(-1, n) ** 2).mean(axis=1))
+    nguong = max(3.0 * float(np.median(nang)), 0.2 * float(np.percentile(nang, 99)), 0.02)
+    noi = nang > nguong
+    doan, dau = [], None
+    for i, v in enumerate(noi):
+        if v and dau is None:
+            dau = i
+        elif not v and dau is not None:
+            doan.append([dau * khung, i * khung])
+            dau = None
+    if dau is not None:
+        doan.append([dau * khung, len(noi) * khung])
+    ghep = []
+    for d in doan:
+        if ghep and d[0] - ghep[-1][1] <= nghi_toi_da:
+            ghep[-1][1] = d[1]
+        else:
+            ghep.append(d)
+    return [(t0, t1) for t0, t1 in ghep if t1 - t0 >= dai_toi_thieu]

@@ -35,8 +35,11 @@ Chọn nhà cung cấp bằng biến môi trường (`.env`, không commit): `GE
 `AIGLASS_GEMINI_MODEL`, `AIGLASS_GEMINI_TTS_MODEL`, `AIGLASS_GEMINI_GIONG`. Thử không cần kính:
 
 ```bash
-python tools/thu_quan_sat.py video.MOV --giay 10 30 --hoi "Phía trước có gì?" --doc
+python tools/thu_quan_sat.py video.MOV --doc          # tự nghe câu hỏi trong video, hỏi AI, tạo tiếng đọc
+python tools/thu_quan_sat.py video.MOV --giay 10 30 --hoi "Phía trước có gì?"   # hoặc tự đặt câu hỏi và mốc giây
 ```
+Không có `--hoi`, công cụ tìm các đoạn có người nói trong video, chép thành chữ bằng PhoWhisper (chạy trên máy, như kính
+thật nghe câu hỏi) và chỉ hỏi AI ở những câu là câu quan sát.
 
 Nối vào `app_main.py` của dự án gốc: `git apply patches/quan_sat_app_main.patch`.
 Chi tiết, số đo từng model và giới hạn: `docs/superpowers/specs/2026-10-30-quan-sat-api-design.md`.

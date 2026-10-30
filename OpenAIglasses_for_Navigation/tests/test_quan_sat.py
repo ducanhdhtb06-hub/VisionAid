@@ -3,6 +3,7 @@
 import asyncio
 import base64
 
+import numpy as np
 import pytest
 
 import quan_sat as Q
@@ -167,3 +168,31 @@ def test_doc_dan_loi_ca_hai_lan_thi_bao_loi(monkeypatch):
         return [m async for m in Q.doc_gemini_dan("Xin chào")]
     with pytest.raises(Q.httpx.ReadTimeout):
         asyncio.run(lay())
+
+
+def _tieng(giay, doan, sr=16000):
+    """Nền ồn nhỏ + các đoạn "nói" (ồn to hơn) đặt ở [(bắt đầu, kết thúc)] giây."""
+    rng = np.random.default_rng(0)
+    a = rng.normal(0, 0.01, int(giay * sr)).astype(np.float32)
+    for t0, t1 in doan:
+        i0, i1 = int(t0 * sr), int(t1 * sr)
+        a[i0:i1] += rng.normal(0, 0.15, i1 - i0).astype(np.float32)
+    return a
+
+
+def test_cat_doan_noi_tim_dung_cac_doan():
+    a = _tieng(10, [(1.0, 2.0), (5.0, 5.8)])
+    d = Q.cat_doan_noi(a, 16000)
+    assert len(d) == 2
+    assert abs(d[0][0] - 1.0) < 0.15 and abs(d[0][1] - 2.0) < 0.15
+    assert abs(d[1][0] - 5.0) < 0.15 and abs(d[1][1] - 5.8) < 0.15
+
+
+def test_cat_doan_noi_noi_cac_quang_nghi_ngan_va_bo_tieng_dong_ngan():
+    a = _tieng(10, [(1.0, 1.6), (1.9, 2.5), (6.0, 6.15)])     # 2 nửa cách 0,3 s = một câu; tiếng động 0,15 s bị bỏ
+    d = Q.cat_doan_noi(a, 16000)
+    assert len(d) == 1 and abs(d[0][0] - 1.0) < 0.15 and abs(d[0][1] - 2.5) < 0.15
+
+
+def test_cat_doan_noi_im_lang_thi_khong_co_doan():
+    assert Q.cat_doan_noi(_tieng(5, []), 16000) == []

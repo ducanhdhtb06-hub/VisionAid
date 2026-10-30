@@ -2,8 +2,12 @@
 """Thử module quan sát (quan_sat.py) với API thật, không cần kính.
 
   python tools/thu_quan_sat.py anh.jpg
-  python tools/thu_quan_sat.py video.MOV --giay 98.6 --hoi "Cái gì chắn đường?"
+  python tools/thu_quan_sat.py video.MOV                            # tự nghe câu hỏi trong video (PhoWhisper trên máy)
+  python tools/thu_quan_sat.py video.MOV --giay 98.6 --hoi "Cái gì chắn đường?"   # tự đặt câu hỏi và mốc giây
   python tools/thu_quan_sat.py video.MOV --giay 10 20 30 --doc      # nhiều mốc, có tạo tiếng (.wav)
+
+Không có --hoi: công cụ tìm các đoạn có người nói trong video, chép thành chữ bằng PhoWhisper (chạy trên máy, như kính
+thật nghe câu hỏi), câu nào là câu quan sát ("phía trước có gì", "chữ này là gì"...) thì lấy khung hình ngay sau đó để hỏi.
 
 Làm nóng trước (như máy chủ lúc khởi động), in câu trả lời và thời gian (hỏi -> tiếng đầu); --doc lưu tiếng đọc vào test_out/quan_sat/ để nghe.
 Cần GEMINI_API_KEY trong .env (chỉ thử nhánh Gemini; nhánh Qwen chạy qua app_main).
@@ -11,11 +15,13 @@ Cần GEMINI_API_KEY trong .env (chỉ thử nhánh Gemini; nhánh Qwen chạy q
 import argparse
 import asyncio
 import os
+import subprocess
 import sys
 import time
 import wave
 
 import cv2
+import numpy as np
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -39,20 +45,50 @@ def anh_jpeg(duong, giay):
     return cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 80])[1].tobytes()
 
 
+def nghe_cau_hoi(video):
+    """Âm thanh của video -> [(bắt đầu, kết thúc, chữ)] cho từng đoạn có người nói (PhoWhisper chạy trên máy)."""
+    pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", video, "-vn", "-ac", "1", "-ar", "16000", "-f", "s16le", "-"],
+                         capture_output=True, check=True).stdout
+    a = np.frombuffer(pcm, np.int16).astype(np.float32) / 32768
+    doan = Q.cat_doan_noi(a, 16000)
+    if not doan:
+        return []
+    import torch
+    from transformers import pipeline
+    cuda = torch.cuda.is_available()
+    asr = pipeline("automatic-speech-recognition", model=os.getenv("AIGLASS_ASR_MODEL", "vinai/PhoWhisper-small"),
+                   device=0 if cuda else -1, dtype=torch.float16 if cuda else torch.float32)
+    kq = []
+    for t0, t1 in doan:
+        x = a[int(max(t0 - 0.2, 0) * 16000):int((t1 + 0.2) * 16000)]
+        chu = asr({"raw": x, "sampling_rate": 16000}, generate_kwargs={"language": "vi"})["text"].strip()
+        kq.append((t0, t1, chu))
+    return kq
+
+
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("nguon", help="ảnh hoặc video")
     ap.add_argument("--giay", type=float, nargs="*", help="mốc giây trong video (bỏ trống nếu là ảnh)")
-    ap.add_argument("--hoi", default="Phía trước có gì?")
+    ap.add_argument("--hoi", default=None, help="câu hỏi; bỏ trống = tự nghe câu hỏi trong video")
     ap.add_argument("--doc", action="store_true", help="tạo tiếng đọc bằng Gemini TTS, lưu .wav")
     a = ap.parse_args()
     load_dotenv()
     os.makedirs("test_out/quan_sat", exist_ok=True)
-    print(f"model nhìn: {Q.GEMINI_MODEL} | model đọc: {Q.GEMINI_TTS_MODEL} | hỏi: {a.hoi}")
+    print(f"model nhìn: {Q.GEMINI_MODEL} | model đọc: {Q.GEMINI_TTS_MODEL}")
+    viec = [(g, a.hoi) for g in (a.giay or [None])] if a.hoi else []
+    if not a.hoi:
+        for t0, t1, chu in nghe_cau_hoi(a.nguon):
+            la = Q.la_cau_quan_sat(chu)
+            print(f"nghe được [{t0:.1f}–{t1:.1f}s]: \"{chu}\"  ->  {'câu quan sát' if la else 'bỏ qua (không phải câu quan sát)'}")
+            if la:
+                viec.append((t1 + 0.3, chu))                 # khung hình ngay sau khi người dùng hỏi xong
+        if not viec:
+            raise SystemExit("Không nghe thấy câu quan sát nào trong video. Dùng --hoi và --giay để tự đặt.")
     await Q.lam_nong()
-    for g in (a.giay or [None]):
+    for g, hoi in viec:
         t = time.time()
-        cau = await Q.mo_ta_gemini(anh_jpeg(a.nguon, g), a.hoi)
+        cau = await Q.mo_ta_gemini(anh_jpeg(a.nguon, g), hoi)
         t_cau = time.time() - t
         nhan = os.path.basename(a.nguon) + ("" if g is None else f" @{g:g}s")
         print(f"\n[{nhan}] {t_cau:.1f}s: {cau}")
