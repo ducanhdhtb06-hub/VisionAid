@@ -196,3 +196,16 @@ def test_cat_doan_noi_noi_cac_quang_nghi_ngan_va_bo_tieng_dong_ngan():
 
 def test_cat_doan_noi_im_lang_thi_khong_co_doan():
     assert Q.cat_doan_noi(_tieng(5, []), 16000) == []
+
+
+def test_lich_phu_de_tinh_moc_tit_va_tieng_dau():
+    from tools import thu_quan_sat as T
+    l = T.lich_phu_de(dict(t0=1.1, t1=2.4, t_asr=0.2, t_dau=4.2, giay_tieng=8.3))
+    assert (l["tit"], l["noi"], l["het"]) == (2.6, 6.8, 15.1)        # nghe xong 2,4 + 0,2 -> tít; +4,2 -> tiếng đầu
+    assert l["hoi"] == (1.1, 6.8) and l["nghe"] == (2.6, 6.8)
+
+
+def test_lich_phu_de_cau_hoi_go_tay_khong_co_buoc_nghe():
+    from tools import thu_quan_sat as T
+    l = T.lich_phu_de(dict(t0=None, t1=30.0, t_asr=0.0, t_dau=3.0, giay_tieng=5.0))
+    assert l["tit"] == 30.0 and l["noi"] == 33.0 and l["hoi"][0] == 28.5       # nhãn "Bạn hỏi" hiện 1,5 s trước khung
