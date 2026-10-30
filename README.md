@@ -7,6 +7,22 @@
 2. **Quan sát nhờ API** (`quan_sat.py`): người dùng hỏi bằng giọng nói ("Phía trước có gì?", "Chữ ở biển xanh là gì?"), kính
    gửi khung hình mới nhất kèm câu hỏi lên AI thị giác (Gemini hoặc Qwen-Omni) rồi đọc câu trả lời.
 
+## Tác giả
+
+**VisionAid do Đặng Đức Anh phát triển**, xây dựng trên nền dự án mã nguồn mở
+[OpenAIglasses_for_Navigation](https://github.com/AI-FanGe/OpenAIglasses_for_Navigation) (AI-FanGe, giấy phép MIT).
+
+**Phần do tác giả phát triển:**
+- **Module chỉ đường theo vạch:** đo hai mép vạch và độ lệch, luật nói "dịch trái/phải", bộ điều khiển vật chắn trên vạch
+  (chọn bên đi vòng, "Đã về vạch", nhớ xe chắn khi xe che mép vạch), né vật cản bằng độ sâu, cảnh báo xe đang tới và
+  lọc báo nhầm, ưu tiên câu gấp.
+- **Module quan sát nhờ API:** hỏi bằng giọng nói, nhìn ảnh bằng Gemini, đọc phát dần, chuyển khóa dự phòng, công cụ thử
+  trên video (`tools/thu_quan_sat.py`).
+- **Kính ESP32 ảo** để phát lại video như camera kính thật, bộ quét câu mâu thuẫn, bộ test (hơn 240 test), video demo.
+
+**Phần lấy từ dự án gốc:** luồng dẫn đường (`workflow_blindpath.py`), phát âm thanh (`audio_*.py`), nhận diện vạch qua đường
+(`crosswalk_awareness.py`) và khung ứng dụng.
+
 > **Bản thử nghiệm — CHƯA an toàn cho người dùng thật.** Mới kiểm trên video quay ở vỉa hè Hà Nội (phát lại như kính
 > ESP32), chưa thử với người khiếm thị đi thật. Luôn dùng kèm gậy.
 
