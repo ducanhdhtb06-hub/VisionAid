@@ -47,9 +47,8 @@ Mọi câu nói và hình vẽ trong video là đầu ra thật của hệ thố
 
 ## Kiến trúc
 
-Các sơ đồ dưới đây mô tả **cả hệ thống đang chạy**. Repo này chỉ chứa **hai module** và phần phụ thuộc cần để chạy
-test. Khối gắn nhãn **DỰ ÁN GỐC** (máy chủ `app_main.py`, `NavigationMaster`, nghe giọng nói, firmware kính) không nằm
-trong repo; khối gắn **TRONG REPO** thì có ở đây.
+Các sơ đồ dưới đây mô tả hệ thống đầy đủ. Repo này chứa **hai module** cùng phần phụ thuộc cần để chạy test; máy chủ
+`app_main.py`, `NavigationMaster`, phần nghe giọng nói và firmware kính lấy từ dự án gốc.
 
 **Phần mềm**
 
