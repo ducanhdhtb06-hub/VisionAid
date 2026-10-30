@@ -10,6 +10,24 @@ Hai module của kính AI glassai:
 > **Bản thử nghiệm — CHƯA an toàn cho người dùng thật.** Mới kiểm trên video quay ở vỉa hè Hà Nội (phát lại như kính
 > ESP32), chưa thử với người khiếm thị đi thật. Luôn dùng kèm gậy.
 
+## Demo
+
+**Video đầy đủ (3 phút 33 giây, có tiếng): [xem / tải tại mục Releases](https://github.com/ducanhdhtb06-hub/glassai/releases/tag/demo-v0.1)**
+
+| Module 1: chỉ đường theo vạch | Module 2: quan sát nhờ API |
+|---|---|
+| ![chỉ đường theo vạch](docs/anh/demo_chi_duong.gif) | ![quan sát nhờ API](docs/anh/demo_quan_sat.gif) |
+
+| Xe đỗ lấn vạch, kính bảo đi vòng | Xe chạy tới, kính bảo dừng |
+|---|---|
+| ![xe đỗ lấn vạch](docs/anh/chi_duong_xe_lan_vach.jpg) | ![xe chạy tới](docs/anh/chi_duong_xe_toi.jpg) |
+
+| Hỏi "Phía trước tôi là gì?" | Hỏi "Chữ ở biển xanh là gì?" |
+|---|---|
+| ![hành lang](docs/anh/quan_sat_hanh_lang.jpg) | ![biển xanh](docs/anh/quan_sat_bien_xanh.jpg) |
+
+Mọi câu nói và hình vẽ trong video là đầu ra thật của hệ thống trên video quay bằng điện thoại, không dựng giả.
+
 ## Kính làm gì
 
 | Tình huống | Kính nói |
