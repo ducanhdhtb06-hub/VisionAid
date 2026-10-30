@@ -1,0 +1,169 @@
+# -*- coding: utf-8 -*-
+"""Module quan sát nhờ API (quan_sat.py): chọn nhà cung cấp, gửi ảnh + câu hỏi, đọc câu trả lời bằng Gemini TTS."""
+import asyncio
+import base64
+
+import pytest
+
+import quan_sat as Q
+
+
+def test_chon_nha_cung_cap(monkeypatch):
+    monkeypatch.delenv("AIGLASS_QUAN_SAT_API", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    assert Q.nha_cung_cap() == "qwen"                     # mặc định như cũ
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    assert Q.nha_cung_cap() == "gemini"                   # có khóa Gemini thì dùng Gemini
+    monkeypatch.setenv("AIGLASS_QUAN_SAT_API", "qwen")
+    assert Q.nha_cung_cap() == "qwen"                     # đặt rõ thì theo biến
+    monkeypatch.setenv("AIGLASS_QUAN_SAT_API", "abc")
+    with pytest.raises(ValueError):
+        Q.nha_cung_cap()
+
+
+def test_la_cau_quan_sat():
+    assert Q.la_cau_quan_sat("Phía trước có gì vậy?")
+    assert Q.la_cau_quan_sat("Phía trước tôi là gì?")       # IMG_2143 (30/10): câu người dùng thật nói
+    assert Q.la_cau_quan_sat("Đọc giúp tôi hạn dùng")
+    assert Q.la_cau_quan_sat("Cái áo này màu gì?")
+    assert Q.la_cau_quan_sat("mô tả xung quanh giúp tôi")
+    assert not Q.la_cau_quan_sat("bắt đầu dẫn đường")
+
+
+def test_noi_dung_gui_kem_anh_va_chi_dan():
+    nd = Q.noi_dung(b"\xff\xd8abc", "Phía trước có gì?")
+    assert nd[0]["role"] == "system" and "tiếng Việt" in nd[0]["content"]
+    phan = nd[1]["content"]
+    assert phan[0]["type"] == "image_url"
+    assert phan[0]["image_url"]["url"] == "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8abc").decode()
+    assert phan[1] == {"type": "text", "text": "Phía trước có gì?"}
+    assert Q.noi_dung(None, "chào")[1]["content"] == [{"type": "text", "text": "chào"}]    # chưa có ảnh: chỉ chữ
+
+
+class _Tra:
+    def __init__(self, text):
+        self.choices = [type("C", (), {"message": type("M", (), {"content": text})()})()]
+
+
+def test_mo_ta_gemini_goi_cong_tuong_thich_openai(monkeypatch):
+    goi = {}
+
+    class _Client:
+        def __init__(self, **kw):
+            goi["kw"] = kw
+            self.chat = type("Chat", (), {"completions": self})()
+
+        async def create(self, **kw):
+            goi["create"] = kw
+            return _Tra("  Phía trước có một xe máy đỗ bên phải.  ")
+    monkeypatch.setenv("GEMINI_API_KEY", "khoa")
+    monkeypatch.setattr(Q, "AsyncOpenAI", _Client)
+    monkeypatch.setattr(Q, "_oai", None)
+    cau = asyncio.run(Q.mo_ta_gemini(b"jpg", "Phía trước có gì?"))
+    assert cau == "Phía trước có một xe máy đỗ bên phải."
+    assert goi["kw"] == dict(api_key="khoa", base_url=Q.GEMINI_BASE_URL, timeout=Q.HET_GIO)
+    assert goi["create"]["model"] == Q.GEMINI_MODEL and goi["create"]["messages"][1]["content"][0]["type"] == "image_url"
+
+
+def test_thieu_khoa_gemini_bao_loi_ro(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
+        asyncio.run(Q.mo_ta_gemini(b"jpg", "?"))
+
+
+def test_doc_gemini_tra_pcm_24k(monkeypatch):
+    pcm = b"\x01\x00\x02\x00"
+    goi = {}
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [{"inlineData": {
+                "mimeType": "audio/L16;codec=pcm;rate=24000", "data": base64.b64encode(pcm).decode()}}]}}]}
+
+    class _Http:
+        def __init__(self, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, headers=None, json=None):
+            goi.update(url=url, headers=headers, json=json)
+            return _Resp()
+    monkeypatch.setenv("GEMINI_API_KEY", "khoa")
+    monkeypatch.setattr(Q.httpx, "AsyncClient", _Http)
+    monkeypatch.setattr(Q, "_http", None)
+    assert asyncio.run(Q.doc_gemini("Xin chào")) == pcm
+    assert Q.GEMINI_TTS_MODEL in goi["url"] and goi["headers"]["x-goog-api-key"] == "khoa"
+    assert goi["json"]["generationConfig"]["responseModalities"] == ["AUDIO"]
+    assert goi["json"]["contents"][0]["parts"][0]["text"] == "Xin chào"     # không kèm lời dặn (bị đọc thành tiếng)
+
+
+def test_chi_dan_ngan_va_nhac_bac_truoc():
+    assert "tối đa hai câu" in Q.CHI_DAN and "bậc" in Q.CHI_DAN
+
+
+def test_tieng_tit_ngan_8k():
+    pcm = Q.tieng_tit()
+    assert len(pcm) == 2 * int(8000 * 0.15) and max(abs(int.from_bytes(pcm[i:i + 2], "little", signed=True))
+                                                   for i in range(0, len(pcm), 2)) > 1000
+
+
+class _Sse:
+    """Giả luồng SSE của streamGenerateContent: mỗi dòng data: chứa một mẩu PCM."""
+    def __init__(self, manh, loi=None):
+        self.manh, self.loi = manh, loi
+
+    def raise_for_status(self):
+        if self.loi:
+            raise self.loi
+
+    async def aiter_lines(self):
+        import json
+        for m in self.manh:
+            yield "data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {
+                "mimeType": "audio/L16;codec=pcm;rate=24000", "data": base64.b64encode(m).decode()}}]}}]})
+            yield ""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+
+def test_doc_dan_tra_tung_manh_va_goi_lai_mot_lan(monkeypatch):
+    goi = []
+
+    class _Http:
+        def stream(self, method, url, headers=None, json=None):
+            goi.append(url)
+            if len(goi) == 1:                                 # lần đầu lỗi mạng -> gọi lại một lần
+                raise Q.httpx.ReadTimeout("chậm")
+            return _Sse([b"\x01\x00", b"\x02\x00"])
+    monkeypatch.setenv("GEMINI_API_KEY", "khoa")
+    monkeypatch.setattr(Q, "_http", _Http())
+
+    async def lay():
+        return [m async for m in Q.doc_gemini_dan("Xin chào")]
+    assert asyncio.run(lay()) == [b"\x01\x00", b"\x02\x00"]
+    assert len(goi) == 2 and "streamGenerateContent" in goi[0] and "alt=sse" in goi[0]
+
+
+def test_doc_dan_loi_ca_hai_lan_thi_bao_loi(monkeypatch):
+    class _Http:
+        def stream(self, *a, **k):
+            raise Q.httpx.ReadTimeout("chậm")
+    monkeypatch.setenv("GEMINI_API_KEY", "khoa")
+    monkeypatch.setattr(Q, "_http", _Http())
+
+    async def lay():
+        return [m async for m in Q.doc_gemini_dan("Xin chào")]
+    with pytest.raises(Q.httpx.ReadTimeout):
+        asyncio.run(lay())

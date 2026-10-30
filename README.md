@@ -1,7 +1,11 @@
-# glassai — Dẫn theo vạch dẫn đường cho người khiếm thị
+# glassai — Kính AI cho người khiếm thị: chỉ đường theo vạch + quan sát nhờ API
 
-Phần **dẫn theo gạch dẫn đường (vạch xúc giác)** của kính AI glassai: camera trên kính nhìn vạch và vật cản phía trước,
-nói hướng đi bằng tiếng Việt.
+Hai module của kính AI glassai:
+
+1. **Chỉ đường theo vạch** (gạch dẫn đường / vạch xúc giác): camera trên kính nhìn vạch và vật cản phía trước, nói hướng
+   đi bằng tiếng Việt.
+2. **Quan sát nhờ API** (`quan_sat.py`): người dùng hỏi bằng giọng nói ("Phía trước có gì?", "Chữ ở biển xanh là gì?"), kính
+   gửi khung hình mới nhất kèm câu hỏi lên AI thị giác (Gemini hoặc Qwen-Omni) rồi đọc câu trả lời.
 
 > **Bản thử nghiệm — CHƯA an toàn cho người dùng thật.** Mới kiểm trên video quay ở vỉa hè Hà Nội (phát lại như kính
 > ESP32), chưa thử với người khiếm thị đi thật. Luôn dùng kèm gậy.
@@ -19,6 +23,27 @@ nói hướng đi bằng tiếng Việt.
 Nguyên tắc: **một giọng nói, ít lời** — khi đang theo vạch chỉ quan tâm vật trong vùng vạch (vật cạnh vạch thì im),
 không đọc số mét, không bao giờ bảo đi về phía lòng đường hay về phía xe đang lao tới; 5 loại nguy hiểm luôn báo.
 
+## Module quan sát nhờ API
+
+| Bước | Cách làm | Thời gian (đo 30/10, hành lang) |
+|---|---|---|
+| Nghe câu hỏi | giọng nói -> chữ (DashScope như dự án gốc; PhoWhisper chạy trên máy cũng chép đúng, 0,16 s) | |
+| Nhìn ảnh | `gemini-3.1-flash-lite` qua cổng tương thích OpenAI, trả lời tối đa hai câu, nói bậc thềm / vật chắn trước | 1,8 s |
+| Đọc câu trả lời | Gemini TTS phát dần (tiếng đầu ~1 s), "tít" ngay khi nhận câu hỏi | tổng ~2,8 s từ lúc hỏi tới tiếng đầu |
+
+Chọn nhà cung cấp bằng biến môi trường (`.env`, không commit): `GEMINI_API_KEY`, `AIGLASS_QUAN_SAT_API=gemini|qwen`,
+`AIGLASS_GEMINI_MODEL`, `AIGLASS_GEMINI_TTS_MODEL`, `AIGLASS_GEMINI_GIONG`. Thử không cần kính:
+
+```bash
+python tools/thu_quan_sat.py video.MOV --giay 10 30 --hoi "Phía trước có gì?" --doc
+```
+
+Nối vào `app_main.py` của dự án gốc: `git apply patches/quan_sat_app_main.patch`.
+Chi tiết, số đo từng model và giới hạn: `docs/superpowers/specs/2026-10-30-quan-sat-api-design.md`.
+
+**Lưu ý:** gói miễn phí của Gemini giới hạn rất chặt (model đọc: 10 lượt mỗi ngày); gói đăng ký Google AI Pro **không** nâng
+giới hạn của khóa API, phải bật thanh toán Cloud. Ảnh camera (có thể có người đi đường) được gửi ra máy chủ nhà cung cấp.
+
 ## Cấu trúc
 
 ```
@@ -26,11 +51,14 @@ OpenAIglasses_for_Navigation/
   dan_theo_vach.py        đo vạch (hai mép, độ lệch, chéo), luật nói dịch trái/phải, phân loại vật chắn/cạnh vạch (3D)
   vat_chan_vach.py        bộ điều khiển vật chắn trên vạch: chọn bên đi vòng, câu nói, "Đã về vạch", nhớ xe chắn
   ne_vat_can_do_sau.py    né vật cản bằng độ sâu (Depth Anything V2) + nhận diện (D-FINE), xe đang tới, mép vỉa hè
+  quan_sat.py             module quan sát nhờ API: chọn nhà cung cấp, gửi ảnh + câu hỏi, đọc phát dần, "tít"
   uu_tien_cau.py          câu gấp ("Dừng lại", "đang tới", "chắn vạch") được chen ngang câu đang đọc
   workflow_blindpath.py   ghép tất cả vào luồng dẫn đường (BlindPathNavigator)
   audio_*.py, obstacle_detector_client.py, crosswalk_awareness.py   module hỗ trợ từ dự án gốc (để chạy được test)
+  tools/thu_quan_sat.py   thử quan sát trên ảnh / video bằng API thật
+  patches/                quan_sat_app_main.patch: nối quan sát vào app_main.py của dự án gốc
   tools/esp32_ao/         "kính ESP32 ảo": phát lại video như camera kính thật (56°, mạng chậm), quét câu mâu thuẫn
-  tests/                  224 test (pytest)
+  tests/                  test (pytest)
   docs/superpowers/       thiết kế (specs) và kế hoạch (plans) từng giai đoạn
 thu_nghiem_do_sau/
   ket_hop_3_model.py      lõi độ sâu + nhận diện + theo dõi vật + bộ nói (Speaker)
@@ -43,7 +71,7 @@ thu_nghiem_do_sau/
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cd OpenAIglasses_for_Navigation
-python -m pytest tests -q          # 224 test, không cần GPU / model
+python -m pytest tests -q          # không cần GPU / model / khóa API
 ```
 
 Chạy thật trên camera cần thêm phần còn lại của dự án gốc

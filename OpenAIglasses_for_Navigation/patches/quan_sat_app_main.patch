@@ -1,0 +1,83 @@
+diff --git a/app_main.py b/app_main.py
+index c6a901a..2815039 100644
+--- a/app_main.py
++++ b/app_main.py
+@@ -68,6 +68,7 @@ from audio_stream import (
+     current_ai_task,
+ )
+ from omni_client import stream_chat, OmniStreamPiece
++import quan_sat
+ from asr_core import (
+     ASRCallback,
+     set_current_recognition,
+@@ -460,7 +461,7 @@ async def start_ai_with_text_custom(user_text: str):
+         # Nếu đang ở chế độ dẫn đường hoặc nhận diện đèn giao thông (không phải chế độ CHAT)
+         if current_state not in ["CHAT", "IDLE"]:
+             # Kiểm tra có phải từ kích hoạt hội thoại được phép không
+-            is_allowed_query = _has_any(user_text, KW_ALLOWED_QUERY)
++            is_allowed_query = _has_any(user_text, KW_ALLOWED_QUERY) or quan_sat.la_cau_quan_sat(user_text)
+             
+             # Kiểm tra có phải lệnh điều khiển dẫn đường không
+             is_nav_control = _has_any(user_text, KW_CROSS_START + KW_CROSS_STOP + KW_NAV_START + KW_NAV_STOP + KW_TL_START + KW_TL_STOP)
+@@ -655,8 +656,17 @@ async def start_ai_with_text(user_text: str):
+         txt_buf: List[str] = []
+         rate_state = None
+ 
++        async def _phat_24k(pcm24: bytes):
++            nonlocal rate_state
++            # 24k → 8k (dùng ratecv để giữ nguyên cao độ và tốc độ)
++            pcm8k, rate_state = audioop.ratecv(pcm24, 2, 1, 24000, 8000, rate_state)
++            pcm8k = audioop.mul(pcm8k, 2, 0.60)
++            if pcm8k:
++                await broadcast_pcm16_realtime(pcm8k)
++
+         # Ghép (ảnh + văn bản)
+         content_list = []
++        jpeg_bytes = None
+         if last_frames:
+             try:
+                 _, jpeg_bytes = last_frames[-1]
+@@ -670,6 +680,17 @@ async def start_ai_with_text(user_text: str):
+         content_list.append({"type": "text", "text": user_text})
+ 
+         try:
++            if quan_sat.nha_cung_cap() == "gemini":
++                # Gemini: "tít" ngay -> ảnh + câu hỏi -> chữ -> Gemini TTS phát dần (xem quan_sat.py)
++                await broadcast_pcm16_realtime(quan_sat.tieng_tit())
++                cau = await quan_sat.mo_ta_gemini(jpeg_bytes, user_text)
++                txt_buf.append(cau)                            # câu cuối hiện trên giao diện (finally)
++                await ui_broadcast_partial("[AI] " + cau)
++                if cau:
++                    async for pcm24 in quan_sat.doc_gemini_dan(cau):
++                        await _phat_24k(pcm24)
++                return
++
+             async for piece in stream_chat(content_list, voice="Cherry", audio_format="wav"):
+                 # Văn bản tăng dần (chỉ cho UI)
+                 if piece.text_delta:
+@@ -686,11 +707,7 @@ async def start_ai_with_text(user_text: str):
+                     except Exception:
+                         pcm24 = b""
+                     if pcm24:
+-                        # 24k → 8k (dùng ratecv để giữ nguyên cao độ và tốc độ)
+-                        pcm8k, rate_state = audioop.ratecv(pcm24, 2, 1, 24000, 8000, rate_state)
+-                        pcm8k = audioop.mul(pcm8k, 2, 0.60)
+-                        if pcm8k:
+-                            await broadcast_pcm16_realtime(pcm8k)
++                        await _phat_24k(pcm24)
+ 
+         except asyncio.CancelledError:
+             # Bị lượt mới ngắt
+@@ -1402,6 +1419,12 @@ async def on_startup():
+     loop = asyncio.get_running_loop()
+     await loop.create_datagram_endpoint(lambda: UDPProto(), local_addr=(UDP_IP, UDP_PORT))
+ 
++@app.on_event("startup")
++async def _lam_nong_quan_sat():
++    # lần gọi đầu mỗi model Gemini chậm hẳn: gọi trước lúc bật máy chủ (chạy nền, không chặn khởi động)
++    if quan_sat.nha_cung_cap() == "gemini":
++        asyncio.create_task(quan_sat.lam_nong())
++
+ @app.on_event("shutdown")
+ async def on_shutdown():
+     """Dọn dẹp khi ứng dụng đóng"""
