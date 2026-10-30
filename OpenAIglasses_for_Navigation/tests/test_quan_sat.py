@@ -59,7 +59,7 @@ def test_mo_ta_gemini_goi_cong_tuong_thich_openai(monkeypatch):
             return _Tra("  Phía trước có một xe máy đỗ bên phải.  ")
     monkeypatch.setenv("GEMINI_API_KEY", "khoa")
     monkeypatch.setattr(Q, "AsyncOpenAI", _Client)
-    monkeypatch.setattr(Q, "_oai", None)
+    monkeypatch.setattr(Q, "_oai", {})
     cau = asyncio.run(Q.mo_ta_gemini(b"jpg", "Phía trước có gì?"))
     assert cau == "Phía trước có một xe máy đỗ bên phải."
     assert goi["kw"] == dict(api_key="khoa", base_url=Q.GEMINI_BASE_URL, timeout=Q.HET_GIO)
@@ -77,6 +77,8 @@ def test_doc_gemini_tra_pcm_24k(monkeypatch):
     goi = {}
 
     class _Resp:
+        status_code = 200
+
         def raise_for_status(self):
             pass
 
@@ -209,3 +211,81 @@ def test_lich_phu_de_cau_hoi_go_tay_khong_co_buoc_nghe():
     from tools import thu_quan_sat as T
     l = T.lich_phu_de(dict(t0=None, t1=30.0, t_asr=0.0, t_dau=3.0, giay_tieng=5.0))
     assert l["tit"] == 30.0 and l["noi"] == 33.0 and l["hoi"][0] == 28.5       # nhãn "Bạn hỏi" hiện 1,5 s trước khung
+
+
+def _het_luot_oai():
+    import openai
+    return openai.RateLimitError("quota", response=Q.httpx.Response(429, request=Q.httpx.Request("POST", "http://x")), body=None)
+
+
+def test_ds_khoa_doc_nhieu_khoa_khong_trung(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "a")
+    monkeypatch.setenv("GEMINI_API_KEY_2", "b")
+    monkeypatch.setenv("GEMINI_API_KEYS", "c, a ,d")
+    assert Q._ds_khoa() == ["c", "a", "d", "b"]
+
+
+def test_het_luot_thi_chuyen_sang_khoa_du_phong_va_nho(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "a")
+    monkeypatch.setenv("GEMINI_API_KEY_2", "b")
+    monkeypatch.delenv("GEMINI_API_KEYS", raising=False)
+    monkeypatch.setattr(Q, "_oai", {})
+    monkeypatch.setattr(Q, "_het_luot", {})
+    dung = []
+
+    class _Client:
+        def __init__(self, api_key, **kw):
+            self.key = api_key
+            self.chat = type("Chat", (), {"completions": self})()
+
+        async def create(self, **kw):
+            dung.append(self.key)
+            if self.key == "a":
+                raise _het_luot_oai()
+            return _Tra("ok " + self.key)
+    monkeypatch.setattr(Q, "AsyncOpenAI", _Client)
+    assert asyncio.run(Q.mo_ta_gemini(b"jpg", "?")) == "ok b"
+    assert dung == ["a", "b"]                                    # a hết lượt -> b
+    dung.clear()
+    assert asyncio.run(Q.mo_ta_gemini(b"jpg", "?")) == "ok b"
+    assert dung == ["b"]                                         # nhớ a vừa hết lượt, không thử lại ngay
+
+
+def test_het_luot_ca_hai_khoa_thi_bao_loi(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "a")
+    monkeypatch.setenv("GEMINI_API_KEY_2", "b")
+    monkeypatch.delenv("GEMINI_API_KEYS", raising=False)
+    monkeypatch.setattr(Q, "_oai", {})
+    monkeypatch.setattr(Q, "_het_luot", {})
+
+    class _Client:
+        def __init__(self, api_key, **kw):
+            self.chat = type("Chat", (), {"completions": self})()
+
+        async def create(self, **kw):
+            raise _het_luot_oai()
+    monkeypatch.setattr(Q, "AsyncOpenAI", _Client)
+    import openai
+    with pytest.raises(openai.RateLimitError):
+        asyncio.run(Q.mo_ta_gemini(b"jpg", "?"))
+
+
+def test_doc_dan_het_luot_thi_chuyen_khoa_du_phong(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "a")
+    monkeypatch.setenv("GEMINI_API_KEY_2", "b")
+    monkeypatch.delenv("GEMINI_API_KEYS", raising=False)
+    monkeypatch.setattr(Q, "_het_luot", {})
+    dung = []
+
+    class _Http:
+        def stream(self, method, url, headers=None, json=None):
+            dung.append(headers["x-goog-api-key"])
+            if headers["x-goog-api-key"] == "a":
+                return _Sse([], loi=Q.httpx.HTTPStatusError("429", request=Q.httpx.Request("POST", url),
+                                                           response=Q.httpx.Response(429)))
+            return _Sse([b"\x01\x00"])
+    monkeypatch.setattr(Q, "_http", _Http())
+
+    async def lay():
+        return [m async for m in Q.doc_gemini_dan("Xin chào")]
+    assert asyncio.run(lay()) == [b"\x01\x00"] and dung == ["a", "b"]

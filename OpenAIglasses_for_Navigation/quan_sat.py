@@ -10,10 +10,11 @@ Lưu ý: ảnh camera (có thể có người đi đường) được gửi ra m
 import base64
 import json
 import os
+import time
 
 import httpx
 import numpy as np
-from openai import APIConnectionError, APITimeoutError, AsyncOpenAI
+from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, RateLimitError
 
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 GEMINI_TTS_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:{kieu}"
@@ -37,8 +38,10 @@ KW_QUAN_SAT = ["phía trước", "trước mặt", "xung quanh", "quan sát", "m
                "nhìn xem", "nhìn giúp", "xem giúp", "giúp tôi xem", "là gì", "có gì", "đọc giúp", "đọc chữ",
                "màu gì", "hạn dùng", "bao nhiêu tiền"]
 
-_oai = None                                      # client dùng chung: giữ kết ghep, khỏi bắt tay TLS mỗi lần hỏi
+_oai = {}                                        # client dùng chung theo từng khóa: giữ kết nối, khỏi bắt tay TLS mỗi lần hỏi
 _http = None
+_het_luot = {}                                   # khóa -> thời điểm (monotonic) được thử lại sau khi báo hết lượt (429)
+THU_LAI_SAU = 900.0                              # giây; khóa hết lượt trong ngày: khóa kia gánh, sau đó mới thử lại
 
 
 def nha_cung_cap() -> str:
@@ -65,18 +68,37 @@ def noi_dung(jpeg, cau_hoi: str) -> list:
     return [{"role": "system", "content": CHI_DAN}, {"role": "user", "content": phan}]
 
 
+def _ds_khoa() -> list:
+    """Các khóa Gemini theo thứ tự ưu tiên: GEMINI_API_KEYS (cách nhau dấu phẩy), GEMINI_API_KEY, GEMINI_API_KEY_2, _3."""
+    ks = [k.strip() for k in os.getenv("GEMINI_API_KEYS", "").split(",") if k.strip()]
+    for ten in ("GEMINI_API_KEY", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3"):
+        k = os.getenv(ten, "").strip()
+        if k and k not in ks:
+            ks.append(k)
+    return ks
+
+
 def _khoa_gemini() -> str:
-    khoa = os.getenv("GEMINI_API_KEY", "")
-    if not khoa:
+    """Khóa đang dùng: khóa đầu tiên chưa báo hết lượt; hết cả thì khóa sắp được thử lại sớm nhất."""
+    ks = _ds_khoa()
+    if not ks:
         raise RuntimeError("Chưa đặt GEMINI_API_KEY (trong .env)")
-    return khoa
+    now = time.monotonic()
+    con = [k for k in ks if _het_luot.get(k, 0.0) <= now]
+    return con[0] if con else min(ks, key=lambda k: _het_luot.get(k, 0.0))
 
 
-def _client_oai():
-    global _oai
-    if _oai is None:
-        _oai = AsyncOpenAI(api_key=_khoa_gemini(), base_url=GEMINI_BASE_URL, timeout=HET_GIO)
-    return _oai
+def _het_luot_khoa(khoa: str) -> bool:
+    """Ghi nhận khóa vừa hết lượt; True nếu còn khóa khác chưa hết để thử."""
+    _het_luot[khoa] = time.monotonic() + THU_LAI_SAU
+    print("[QUAN_SAT] Khóa Gemini hết lượt" + (", chuyển khóa dự phòng" if len(_ds_khoa()) > 1 else ""), flush=True)
+    return any(_het_luot.get(k, 0.0) <= time.monotonic() for k in _ds_khoa())
+
+
+def _client_oai(khoa: str):
+    if khoa not in _oai:
+        _oai[khoa] = AsyncOpenAI(api_key=khoa, base_url=GEMINI_BASE_URL, timeout=HET_GIO)
+    return _oai[khoa]
 
 
 def _client_http():
@@ -87,13 +109,19 @@ def _client_http():
 
 
 async def mo_ta_gemini(jpeg, cau_hoi: str) -> str:
-    """Gửi ảnh + câu hỏi lên Gemini, trả câu trả lời (chữ). Lỗi mạng: gọi lại một lần."""
-    for lan in range(2):
+    """Gửi ảnh + câu hỏi lên Gemini, trả câu trả lời (chữ). Lỗi mạng: gọi lại một lần; hết lượt: chuyển khóa dự phòng."""
+    mang = 0
+    while True:
+        khoa = _khoa_gemini()
         try:
-            tra = await _client_oai().chat.completions.create(model=GEMINI_MODEL, messages=noi_dung(jpeg, cau_hoi))
+            tra = await _client_oai(khoa).chat.completions.create(model=GEMINI_MODEL, messages=noi_dung(jpeg, cau_hoi))
             return (tra.choices[0].message.content or "").strip()
+        except RateLimitError:
+            if not _het_luot_khoa(khoa):
+                raise
         except (APITimeoutError, APIConnectionError):
-            if lan:
+            mang += 1
+            if mang > 1:
                 raise
 
 
@@ -107,22 +135,27 @@ def _than_tts(cau: str) -> dict:
 
 async def doc_gemini(cau: str) -> bytes:
     """Gemini TTS: chữ -> PCM16 mono 24 kHz (chờ đủ cả câu)."""
-    r = await _client_http().post(GEMINI_TTS_URL.format(model=GEMINI_TTS_MODEL, kieu="generateContent"),
-                                  headers={"x-goog-api-key": _khoa_gemini()}, json=_than_tts(cau))
-    r.raise_for_status()
-    phan = r.json()["candidates"][0]["content"]["parts"][0]["inlineData"]
-    return base64.b64decode(phan["data"])
+    while True:
+        khoa = _khoa_gemini()
+        r = await _client_http().post(GEMINI_TTS_URL.format(model=GEMINI_TTS_MODEL, kieu="generateContent"),
+                                      headers={"x-goog-api-key": khoa}, json=_than_tts(cau))
+        if r.status_code == 429 and _het_luot_khoa(khoa):
+            continue
+        r.raise_for_status()
+        phan = r.json()["candidates"][0]["content"]["parts"][0]["inlineData"]
+        return base64.b64decode(phan["data"])
 
 
 async def doc_gemini_dan(cau: str):
     """Gemini TTS phát dần: sinh từng mẩu PCM16 24 kHz ngay khi tới (mẩu đầu ~1 s thay vì ~3,7 s chờ cả câu).
-    Lỗi mạng trước khi có mẩu nào: gọi lại một lần."""
+    Lỗi mạng trước khi có mẩu nào: gọi lại một lần; hết lượt (429): chuyển khóa dự phòng."""
     url = GEMINI_TTS_URL.format(model=GEMINI_TTS_MODEL, kieu="streamGenerateContent") + "?alt=sse"
-    for lan in range(2):
+    lan = 0
+    while True:
         da_co = False
+        khoa = _khoa_gemini()
         try:
-            async with _client_http().stream("POST", url, headers={"x-goog-api-key": _khoa_gemini()},
-                                             json=_than_tts(cau)) as r:
+            async with _client_http().stream("POST", url, headers={"x-goog-api-key": khoa}, json=_than_tts(cau)) as r:
                 r.raise_for_status()
                 async for dong in r.aiter_lines():
                     if not dong.startswith("data:"):
@@ -132,8 +165,13 @@ async def doc_gemini_dan(cau: str):
                             da_co = True
                             yield base64.b64decode(p["inlineData"]["data"])
             return
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429 and not da_co and _het_luot_khoa(khoa):
+                continue
+            raise
         except (httpx.TimeoutException, httpx.NetworkError):
-            if lan or da_co:
+            lan += 1
+            if lan > 1 or da_co:
                 raise
 
 
@@ -149,8 +187,8 @@ async def lam_nong():
     Không làm nóng model đọc: gói miễn phí giới hạn số lần gọi TTS mỗi phút (429 khi gọi dồn, 30/10), để dành lượt
     cho câu hỏi thật."""
     try:
-        await _client_oai().chat.completions.create(model=GEMINI_MODEL, messages=[{"role": "user", "content": "Chào"}],
-                                                    max_tokens=5)
+        await _client_oai(_khoa_gemini()).chat.completions.create(
+            model=GEMINI_MODEL, messages=[{"role": "user", "content": "Chào"}], max_tokens=5)
         print("[QUAN_SAT] Đã làm nóng Gemini", flush=True)
     except Exception as e:
         print(f"[QUAN_SAT] Làm nóng Gemini lỗi (bỏ qua): {e}", flush=True)
@@ -160,7 +198,7 @@ def cat_doan_noi(a, sr: int = 16000, khung: float = 0.05, nghi_toi_da: float = 0
     """Tìm các đoạn có người nói trong âm thanh mono `a` (float, [-1, 1]): [(bắt đầu giây, kết thúc giây)].
 
     Ngưỡng theo mức ồn nền của chính đoạn thu (trung vị năng lượng) nên chạy được trên video quay ngoài đường lẫn
-    trong nhà. Quãng nghỉ ngắn hơn `nghi_toi_da` được ghep lại (một câu); đoạn ngắn hơn `dai_toi_thieu` (tiếng động) bỏ."""
+    trong nhà. Quãng nghỉ ngắn hơn `nghi_toi_da` được nối lại (một câu); đoạn ngắn hơn `dai_toi_thieu` (tiếng động) bỏ."""
     n = int(sr * khung)
     if len(a) < n:
         return []

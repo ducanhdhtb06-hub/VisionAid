@@ -31,7 +31,7 @@ không đọc số mét, không bao giờ bảo đi về phía lòng đường h
 | Nhìn ảnh | `gemini-3.1-flash-lite` qua cổng tương thích OpenAI, trả lời tối đa hai câu, nói bậc thềm / vật chắn trước | 1,8 s |
 | Đọc câu trả lời | Gemini TTS phát dần (tiếng đầu ~1 s), "tít" ngay khi nhận câu hỏi | tổng ~2,8 s từ lúc hỏi tới tiếng đầu |
 
-Chọn nhà cung cấp bằng biến môi trường (`.env`, không commit): `GEMINI_API_KEY`, `AIGLASS_QUAN_SAT_API=gemini|qwen`,
+Chọn nhà cung cấp bằng biến môi trường (`.env`, không commit): `GEMINI_API_KEY` (thêm `GEMINI_API_KEY_2` làm khóa dự phòng: khóa nào hết lượt thì tự chuyển sang khóa kia), `AIGLASS_QUAN_SAT_API=gemini|qwen`,
 `AIGLASS_GEMINI_MODEL`, `AIGLASS_GEMINI_TTS_MODEL`, `AIGLASS_GEMINI_GIONG`. Thử không cần kính:
 
 ```bash

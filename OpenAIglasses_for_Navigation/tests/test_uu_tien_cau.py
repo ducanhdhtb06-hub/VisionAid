@@ -188,4 +188,6 @@ def test_hai_cau_lien_nhau_co_quang_nghi(loa, monkeypatch):
     AP.play_audio_threadsafe("Dịch sang trái")           # câu thường xếp hàng sau câu thường
     time.sleep(2.6)
     assert len(loa.goi) == 2
-    assert loa.goi[1][:4800] == bytes(4800)              # >= 0,3 s im lặng trước câu thứ hai (8 kHz, 16 bit)
+    # >= 0,25 s im lặng trước câu thứ hai (8 kHz, 16 bit). Quãng nghỉ là 0,3 s TÍNH CẢ thời gian đã im (lead_ms = 300 - idle),
+    # nên khi máy bận, luồng phát trễ vài ms thì phần im nối thêm ngắn đúng chừng đó: dung sai 50 ms (đo 30/10: lỗi 16 byte)
+    assert loa.goi[1][:4000] == bytes(4000)

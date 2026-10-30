@@ -9,6 +9,7 @@ kèm câu hỏi lên AI thị giác và đọc câu trả lời. Giống chế �
 |---|---|---|
 | `AIGLASS_QUAN_SAT_API` | `gemini` / `qwen` | không đặt: có `GEMINI_API_KEY` thì Gemini, không thì Qwen |
 | `GEMINI_API_KEY` | khóa Google AI Studio | đặt trong `.env`, không commit |
+| `GEMINI_API_KEY_2`, `_3`, hoặc `GEMINI_API_KEYS` (cách nhau dấu phẩy) | khóa dự phòng | khóa nào báo hết lượt (429) thì tự chuyển sang khóa kế, nhớ 15 phút rồi mới thử lại |
 | `AIGLASS_GEMINI_MODEL` | `gemini-3.1-flash-lite` | model nhìn ảnh (cổng tương thích OpenAI) |
 | `AIGLASS_GEMINI_TTS_MODEL` | `gemini-3.8-flash-lite-tts` | model đọc, phát dần (PCM16 mono 24 kHz) |
 | `AIGLASS_GEMINI_GIONG` | `Kore` | giọng đọc dựng sẵn của Gemini |
