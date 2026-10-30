@@ -45,6 +45,32 @@ nền để chạy thử nhanh; các thành phần lấy từ dự án gốc s�
 
 Mọi câu nói và hình vẽ trong video là đầu ra thật của hệ thống trên video quay bằng điện thoại, không dựng giả.
 
+## Kiến trúc
+
+Các sơ đồ dưới đây mô tả **cả hệ thống đang chạy**. Repo này chỉ chứa **hai module** và phần phụ thuộc cần để chạy
+test. Khối gắn nhãn **DỰ ÁN GỐC** (máy chủ `app_main.py`, `NavigationMaster`, nghe giọng nói, firmware kính) không nằm
+trong repo; khối gắn **TRONG REPO** thì có ở đây.
+
+**Phần mềm**
+
+![kiến trúc phần mềm](docs/anh/kien_truc_phan_mem.png)
+
+**Quy trình xử lý** (xanh: đã thử trên máy tính · cam: dự kiến · xám: ý tưởng)
+
+![quy trình xử lý](docs/anh/quy_trinh_xu_ly.png)
+
+**Phần cứng:** hệ thống đã thử (kính gửi dữ liệu về máy tính) và phương án dự kiến (điện thoại Android, BLE, motor rung)
+
+| Hệ thống đã thử | Phương án dự kiến (chưa thực hiện) |
+|---|---|
+| ![kiến trúc phần cứng](docs/anh/kien_truc_phan_cung.png) | ![phương án phần cứng](docs/anh/phuong_an_phan_cung.png) |
+
+**Chi tiết từng module**
+
+| Module 1: chỉ đường theo vạch | Module 2: quan sát nhờ API |
+|---|---|
+| ![module 1](docs/anh/module1_chi_duong.png) | ![module 2](docs/anh/module2_quan_sat.png) |
+
 ## Kính làm gì
 
 | Tình huống | Kính nói |
