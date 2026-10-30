@@ -19,8 +19,8 @@ So sánh luôn với CÁCH CŨ (YOLOE + luật "chân ở 1/4 dưới ảnh ho�
 - chạy lại cách bản 2 (chỉ độ sâu quyết định): thêm --khong-gop.
 
 Chạy (đứng ở glassai/, đã bật .venv):
-  python thu_nghiem_do_sau/ket_hop_3_model.py thu_nghiem_do_sau/video/vid_a.mp4
-Kết quả: thu_nghiem_do_sau/ket_qua/<tên>_ket_hop.mp4 + số liệu in ra màn hình.
+  python loi_do_sau/ket_hop_3_model.py loi_do_sau/video/vid_a.mp4
+Kết quả: loi_do_sau/ket_qua/<tên>_ket_hop.mp4 + số liệu in ra màn hình.
 """
 import argparse
 import collections

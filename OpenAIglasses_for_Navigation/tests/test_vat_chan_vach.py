@@ -429,7 +429,7 @@ def test_cau_canh_bao_khong_co_so_met():
 
 
 def test_loa_khong_ghep_manh_so_met():
-    from ne_vat_can_do_sau import K               # module vật cản tự thêm đường dẫn thu_nghiem_do_sau
+    from ne_vat_can_do_sau import K               # module vật cản tự thêm đường dẫn loi_do_sau
     sp = K.Speaker(noi_khoang_cach=False)
     dung = []
     sp.clip = lambda k: (dung.append(k), np.zeros(10, np.int16))[1]

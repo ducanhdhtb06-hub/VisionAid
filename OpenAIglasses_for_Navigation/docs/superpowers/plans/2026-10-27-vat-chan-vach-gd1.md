@@ -31,7 +31,7 @@ lại: lọc câu module vật cản, chạy bộ điều khiển sau dẫn vạ
 5. Bên lòng đường không bao giờ được chọn. → Task 4 `test_xep_ben_bo_ben_duong`.
 
 ### Task 1: Câu nói mới + từ khóa khẩn
-**Files:** `../thu_nghiem_do_sau/tao_giong.py` (MANH), sinh WAV vào `../thu_nghiem_do_sau/giong/`; `uu_tien_cau.py`
+**Files:** `../loi_do_sau/tao_giong.py` (MANH), sinh WAV vào `../loi_do_sau/giong/`; `uu_tien_cau.py`
 (`TU_KHAN` thêm "chắn vạch", "bị chắn"); test `tests/test_uu_tien_cau.py`.
 - [ ] Test: `la_cau_khan("Xe máy chắn vạch, vòng bên trái.")`, `la_cau_khan("Vạch bị chắn, dừng lại, hãy dùng gậy.")`
   → True; `la_cau_khan("Đã về vạch.")` → False. Đỏ → sửa → xanh.

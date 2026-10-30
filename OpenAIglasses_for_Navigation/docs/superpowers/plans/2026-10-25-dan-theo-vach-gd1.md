@@ -125,6 +125,6 @@
 - Nhãn JSON: `{"mo_ta": ..., "nguoi_cham": "Claude (nhìn ảnh gốc, chưa xem đầu ra module mới)", "khung": [{"video", "t", "vach": "trai|giua|phai|khong_ro"}]}` — `trai` nghĩa là vạch ở bên trái người đi (đúng câu phải là "dịch/rẽ trái" hoặc im).
 
 - [ ] **Step 1:** Trích ~60 khung ngẫu nhiên (seed cố định) từ 4 video dev **gốc, chưa vẽ gì**; Claude xem và chấm `vach` → `nhan_vach_dev.json`, trước khi xem đầu ra module mới cho các khung đó.
-- [ ] **Step 2:** Viết công cụ; chạy trên `khiem.mp4`, `../my/IMG_7354.MOV`, `../my/IMG_7356.MOV`, `../my/IMG_7358.MOV` và bản `../thu_nghiem_do_sau/video_kinh/{khiem,IMG_7354,IMG_7356,IMG_7358}_kinh.mp4`.
+- [ ] **Step 2:** Viết công cụ; chạy trên `khiem.mp4`, `../my/IMG_7354.MOV`, `../my/IMG_7356.MOV`, `../my/IMG_7358.MOV` và bản `../loi_do_sau/video_kinh/{khiem,IMG_7354,IMG_7356,IMG_7358}_kinh.mp4`.
 - [ ] **Step 3:** Đạt khi: 0 câu mới sai chiều theo nhãn; câu/phút mới ≪ 31; ghi số liệu thật (kể cả chỗ kém) vào spec mục 6.5 và `NHAT_KY_PHIEN_LAM_VIEC.md`.
 - [ ] **Step 4:** Xuất 1–2 video có vẽ + tiếng cho người dùng xem vào `../video_ket_qua/vach_gd1/` bằng `tools/test_navigation.py ... --save` (đường đi thật của hệ thống).

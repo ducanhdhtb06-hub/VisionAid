@@ -12,9 +12,9 @@ Không đọc số mét (đo khoảng cách còn sai ~10%; người dùng 28/10)
 AIGLASS_NE_BAC_XUONG=1: thử báo bậc xuống / hố (chưa đủ dữ liệu kiểm tra, mặc định tắt).
 Không dùng Ultralytics (AGPL).
 
-Logic lõi nằm ở thu_nghiem_do_sau/ket_hop_3_model.py (một nguồn duy nhất, đã chấm điểm trên 9 video);
+Logic lõi nằm ở loi_do_sau/ket_hop_3_model.py (một nguồn duy nhất, đã chấm điểm trên 9 video);
 module này chỉ chạy logic đó cho từng khung hình thời gian thực và đăng ký câu nói ghép vào audio_player.
-Đường dẫn thư mục lõi: biến môi trường AIGLASS_NE_DIR (mặc định ../thu_nghiem_do_sau).
+Đường dẫn thư mục lõi: biến môi trường AIGLASS_NE_DIR (mặc định ../loi_do_sau).
 
 CHƯA kiểm tra trên kính thật (ESP32); số liệu chỉ từ video điện thoại. CHƯA an toàn cho người dùng thật.
 """
@@ -33,7 +33,7 @@ import torch
 logger = logging.getLogger(__name__)
 
 _NE_DIR = os.getenv("AIGLASS_NE_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                                   "thu_nghiem_do_sau"))
+                                                   "loi_do_sau"))
 if _NE_DIR not in sys.path:
     sys.path.insert(0, _NE_DIR)
 import ket_hop_3_model as K  # noqa: E402
@@ -360,7 +360,7 @@ class NeVatCanDoSau:
         return xep_ben(free or {}, duong)
 
     def dang_ky_cau(self, cau, ten_en=None):
-        """Ghép câu của bộ điều khiển vật chắn từ mảnh WAV (thu_nghiem_do_sau/giong) và đăng ký để phát được."""
+        """Ghép câu của bộ điều khiển vật chắn từ mảnh WAV (loi_do_sau/giong) và đăng ký để phát được."""
         rieng = {'Vạch bị chắn, dừng lại, hãy dùng gậy.': ['vach_bi_chan'], 'Đã về vạch.': ['da_ve_vach'],
                  'Vạch ở bên phải.': ['vach_ben_phai'], 'Vạch ở bên trái.': ['vach_ben_trai'],
                  'Chưa thấy lại vạch, hãy dùng gậy.': ['chua_thay_lai_vach']}

@@ -39,10 +39,10 @@
 ### Task 1: Công cụ thử trực tiếp bằng iPhone chạy module dẫn vạch
 
 **Files:**
-- Modify: `../thu_nghiem_do_sau/truc_tiep/may_chu.py` (thêm `EngineDanVach`, `wav_cua_cau`; `tao_app` nhận `kich_thuoc`)
-- Modify: `../thu_nghiem_do_sau/truc_tiep/chay.py` (cờ `--dan-vach`, `--hfov`)
-- Modify: `../thu_nghiem_do_sau/truc_tiep/static/thu_kinh.html` (tham số URL `khung=43` cắt giữa 4:3 640×480, `fps`)
-- Test: `../thu_nghiem_do_sau/truc_tiep/test_may_chu.py`
+- Modify: `../loi_do_sau/truc_tiep/may_chu.py` (thêm `EngineDanVach`, `wav_cua_cau`; `tao_app` nhận `kich_thuoc`)
+- Modify: `../loi_do_sau/truc_tiep/chay.py` (cờ `--dan-vach`, `--hfov`)
+- Modify: `../loi_do_sau/truc_tiep/static/thu_kinh.html` (tham số URL `khung=43` cắt giữa 4:3 640×480, `fps`)
+- Test: `../loi_do_sau/truc_tiep/test_may_chu.py`
 
 **Interfaces:**
 - Produces: `EngineDanVach(lam_xau=None)` cùng giao thức `Engine` (`step(img_bgr, t) -> (câu|None, wav|None)`, `cho_noi_lai()`); chạy đúng đường hệ thống `BlindPathNavigator.process_frame` (yolo-seg + `dan_theo_vach` + module vật cản độ sâu với cờ "đang theo vạch"), đồng hồ ảo = `t` (giờ chụp trên iPhone) để luật chờ đúng cả khi phát lại. `wav_cua_cau(text) -> bytes | None` (tra `audio_player.AUDIO_MAP` như `play_voice_text`). `tao_app(engine, ma, thu_muc_phien, kich_thuoc=(640, 360))`.
@@ -50,7 +50,7 @@
 Lý do: chưa có kính ESP32 → iPhone kẹp mũ là camera thật duy nhất có chuyển động đầu thật; cắt giữa 4:3 từ video 16:9 góc ~70° cho góc nhìn ngang ~55° (gần camera kính) → `AIGLASS_HFOV=55` mặc định khi `--dan-vach`. ESP32 gửi 3–8 khung/giây → `fps=8`.
 
 - [ ] **Step 1: Test hỏng**: `test_tao_app_kich_thuoc_4_3` (gửi JPEG 640×360 với `kich_thuoc=(640, 480)` → engine nhận ảnh `shape[:2] == (480, 640)`); `test_wav_cua_cau_co_va_khong` (`"Dịch sang phải"` → bytes bắt đầu `b"RIFF"`; câu lạ → None); `test_engine_dan_vach_bat_cau_va_dong_ho_ao` (engine dựng với navigator giả có `process_frame` gọi `workflow_blindpath.play_voice_text("Dịch sang phải")` và ghi lại `workflow_blindpath.time.time()` → `step(img, 2.5)` trả `("Dịch sang phải", wav)` và đồng hồ đọc được = gốc + 2,5).
-- [ ] **Step 2:** `cd .. && .venv/bin/python -m pytest thu_nghiem_do_sau/truc_tiep -q` → 3 test mới FAIL.
+- [ ] **Step 2:** `cd .. && .venv/bin/python -m pytest loi_do_sau/truc_tiep -q` → 3 test mới FAIL.
 - [ ] **Step 3:** cài đặt; HTML: `khung=43` → canvas 640×480, `drawImage` cắt giữa (sx = (vw − vh·4/3)/2); `fps` → chu kỳ `guiKhung`; `chay.py --dan-vach` in mã QR có `&khung=43&fps=8`, đặt `AIGLASS_HFOV` (mặc định 55).
 - [ ] **Step 4:** test cả thư mục PASS; chạy thật `chay.py --dan-vach --khong-ham`, đẩy 20 khung từ `../my/IMG_7356.MOV` qua WebSocket (script nhỏ) → log phiên có khung đã xử lý, không lỗi.
 - [ ] **Step 5:** Commit (nếu được phép).

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Tạo các mảnh giọng nói ngắn cho bản thử nghiệm (edge-tts, cần internet), lưu ở thu_nghiem_do_sau/giong/.
+Tạo các mảnh giọng nói ngắn cho bản thử nghiệm (edge-tts, cần internet), lưu ở loi_do_sau/giong/.
 Câu cảnh báo được ghép lúc chạy: <tên vật> + <bên nào> + <khoảng cách>, ví dụ "Xe máy" + "bên phải" + "2 mét".
 Không đụng tới voice/ của dự án.
 
 Chạy (đứng ở glassai/, đã bật .venv):
-  python thu_nghiem_do_sau/tao_giong.py
+  python loi_do_sau/tao_giong.py
 """
 import asyncio
 import os

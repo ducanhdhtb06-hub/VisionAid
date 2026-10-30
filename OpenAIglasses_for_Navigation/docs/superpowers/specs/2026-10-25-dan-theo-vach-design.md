@@ -116,7 +116,7 @@ Camera lỗ kim, tiêu cự `f` (pixel), tâm ảnh `cx`. Dải gạch thẳng, 
 
 1. **Test đơn vị trên mask tổng hợp** (vẽ dải gạch bằng phép chiếu camera với `d`, `ψ`, độ chúc, độ cao đã biết): đo lại được `d/W` (sai ≤ 0,1) và `ψ` (sai ≤ 1,5°) với nhiều độ chúc/độ cao khác nhau — chứng minh không phụ thuộc hiệu chỉnh. Thêm mask bị che một mép, mask ngã ba, mask quá ngắn → `tin_cay=False`.
 2. **Test luật nói**: chuỗi đo giả lập theo thời gian → đúng câu, đúng lúc, im khi đúng, không lặp trong 4 s, quay về thì im.
-3. **Đánh giá offline trên video dev** (`khiem`, `IMG_7354`, `IMG_7356`, `IMG_7358`, cả bản gốc lẫn bản giả lập kính `thu_nghiem_do_sau/video_kinh/*_kinh.mp4`): câu/phút, % khung tin cậy, và **số câu sai chiều** so với nhãn mắt (Claude tự chấm mẫu khung: vạch ở trái/giữa/phải người đi — ghi rõ là nhãn của Claude).
+3. **Đánh giá offline trên video dev** (`khiem`, `IMG_7354`, `IMG_7356`, `IMG_7358`, cả bản gốc lẫn bản giả lập kính `loi_do_sau/video_kinh/*_kinh.mp4`): câu/phút, % khung tin cậy, và **số câu sai chiều** so với nhãn mắt (Claude tự chấm mẫu khung: vạch ở trái/giữa/phải người đi — ghi rõ là nhãn của Claude).
 4. **Video giữ riêng** (`IMG_7357`, `IMG_7359`, `IMG_7355` 0–65 s, video đi lệch quay sau): chỉ chạy sau khi xong cả 3 giai đoạn.
 
 **Đạt giai đoạn 1 khi:** 0 câu sai chiều trên nhãn mẫu; câu/phút giảm mạnh so với 31; test xanh.

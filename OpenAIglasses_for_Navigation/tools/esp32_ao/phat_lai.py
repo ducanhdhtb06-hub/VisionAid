@@ -250,7 +250,7 @@ def main():
     ap.add_argument("--goc-viet", action="store_true",
                     help="chạy bản GỐC ĐÃ VIỆT HÓA (glassai/OpenAIglasses_goc_viet: logic y hệt gốc, chữ tiếng Việt)")
     ap.add_argument("--goc-trung-quoc", action="store_true",
-                    help="chạy CODE GỐC Trung Quốc y hệt (bak-zh) nói tiếng Việt (thu_nghiem_do_sau/truc_tiep/goc_trung_quoc.py)")
+                    help="chạy CODE GỐC Trung Quốc y hệt (bak-zh) nói tiếng Việt (loi_do_sau/truc_tiep/goc_trung_quoc.py)")
     ap.add_argument("--nhan", default=None, help="file nhãn (test_cham_diem/nhan_vach_dev.json)")
     ap.add_argument("--may-chu-co-san", action="store_true", help="dùng app_main đang chạy (không có nhật ký câu)")
     a = ap.parse_args()
@@ -266,7 +266,7 @@ def main():
         goc = dict(thu_muc_may_chu=os.path.join(os.path.dirname(GOC), "OpenAIglasses_goc_viet"), boc_ghi_cau=True)
     elif a.goc_trung_quoc:
         sys.path.insert(0, os.path.dirname(GOC))
-        from thu_nghiem_do_sau.truc_tiep import goc_trung_quoc as G
+        from loi_do_sau.truc_tiep import goc_trung_quoc as G
         ban = G.tao_ban_chay(os.path.join(os.path.dirname(GOC), "goc_trung_quoc_chay"))
         goc = dict(cau_bat=G.CAU_BAT_ZH, cau_tat=G.CAU_TAT_ZH, thu_muc_may_chu=ban,
                    env_may_chu={"VOICE_DIR": G.tao_giong_viet(os.path.join(ban, "giong_viet"))})

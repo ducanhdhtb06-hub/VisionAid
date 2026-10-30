@@ -60,9 +60,9 @@ OpenAIglasses_for_Navigation/
   tools/esp32_ao/         "kính ESP32 ảo": phát lại video như camera kính thật (56°, mạng chậm), quét câu mâu thuẫn
   tests/                  test (pytest)
   docs/superpowers/       thiết kế (specs) và kế hoạch (plans) từng giai đoạn
-thu_nghiem_do_sau/
-  ket_hop_3_model.py      lõi độ sâu + nhận diện + theo dõi vật + bộ nói (Speaker)
-  tao_giong.py, giong/    tạo và các mảnh giọng nói tiếng Việt (.wav) dùng để ghép câu
+loi_do_sau/
+  ket_hop_3_model.py      lõi của module 1: độ sâu + nhận diện vật + theo dõi vật + bộ nói (Speaker)
+  giong/, tao_giong.py    các mảnh giọng tiếng Việt (.wav) kính ghép thành câu khi tránh vật cản, và script tạo lại
 ```
 
 ## Cài và chạy test

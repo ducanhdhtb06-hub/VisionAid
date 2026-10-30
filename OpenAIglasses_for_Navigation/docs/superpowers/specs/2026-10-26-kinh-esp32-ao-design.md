@@ -84,7 +84,7 @@ Mỗi hồ sơ là một file tham số (ví dụ `ov2640_xiao.json`, `ov3660_xi
 - Đo các chỉ số trên ảnh mẫu, rồi chỉnh tham số cho ảnh iPhone đã qua hồ sơ, chụp cảnh tương tự, có chỉ số khớp.
 - Xuất bảng so. Chỗ nào không có dữ liệu, ví dụ bóng râm, thì đặt phía xấu hơn và ghi "ước lượng".
 
-Bộ `LamXau` hiện có (`thu_nghiem_do_sau/gia_lap_kinh.py`) chưa hiệu chỉnh theo bo thật. Hồ sơ mới **thay** nó trong đường ESP32 ảo, giữ `LamXau` cho các công cụ cũ.
+Bộ `LamXau` hiện có (`loi_do_sau/gia_lap_kinh.py`) chưa hiệu chỉnh theo bo thật. Hồ sơ mới **thay** nó trong đường ESP32 ảo, giữ `LamXau` cho các công cụ cũ.
 
 ### 7.3 Nhịp thời gian và mạng
 

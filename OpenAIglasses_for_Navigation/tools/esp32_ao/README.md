@@ -34,13 +34,13 @@ Mọi lệnh chạy từ `OpenAIglasses_for_Navigation/`. Lệnh nào bật `app
 
 ## Chế độ B: iPhone làm kính (quay demo)
 ```bash
-cd .. && .venv/bin/python thu_nghiem_do_sau/truc_tiep/chay.py --cau-noi --ho-so ov2640_xiao
+cd .. && .venv/bin/python loi_do_sau/truc_tiep/chay.py --cau-noi --ho-so ov2640_xiao
 ```
 1. Lệnh tự bật `app_main`, mở đường hầm và in mã QR. Quét mã bằng iPhone.
 2. iPhone **kẹp mũ, cầm ngang**, đeo tai nghe. Bấm **Bắt đầu**: kính bắt đầu dẫn đường. Bấm **Dừng**: tắt.
 3. Ảnh iPhone được biến thành "ảnh ESP32" trước khi vào máy chủ thật.
 4. Nếu mất mạng iPhone, máy chủ phản ứng như kính thật bị rớt.
-5. Xuất video: lệnh `xuat_video.py` như trên, với `<thư mục phiên con>` trong `thu_nghiem_do_sau/truc_tiep/phien/cau_noi_*`.
+5. Xuất video: lệnh `xuat_video.py` như trên, với `<thư mục phiên con>` trong `loi_do_sau/truc_tiep/phien/cau_noi_*`.
 
 **Khi đi thật: luôn mở mắt**, có người đi kèm. Không bịt mắt ngoài đường.
 
