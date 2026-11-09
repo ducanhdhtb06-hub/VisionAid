@@ -56,6 +56,9 @@ hình.
 ![app VisionAid](docs/anh/app_man_hinh.jpg)
 
 - Cài như app: trên iPhone bấm Chia sẻ → "Thêm vào MH chính"; trên Android mở menu ⋮ → "Cài đặt ứng dụng".
+- **Hỏi kính:** khi đang dẫn đường, giữ nửa phải màn hình ("Giữ để hỏi"), nói câu hỏi ("Phía trước có gì?", "Chữ trên
+  biển là gì?") rồi thả tay. Điện thoại tự chuyển giọng nói thành chữ; máy tính gửi câu hỏi kèm hình camera lúc đó tới
+  Gemini và đọc câu trả lời (thường 5–8 giây). "Dừng lại" luôn được nói trước, kể cả khi đang trả lời.
 - App cần **máy tính chạy AI** đang bật: máy tính in một mã QR, quét mã đó để app biết gửi hình tới đâu. Mở link trần
   không quét mã thì xem được giao diện và hướng dẫn, nhưng chưa dẫn đường được.
 - Mã nguồn app: [`app/`](app/) (HTML + JavaScript, không cần cài đặt gì).
