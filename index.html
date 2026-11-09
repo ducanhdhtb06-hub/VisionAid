@@ -82,6 +82,17 @@
   #khongcb { display: none; font-weight: 800; color: var(--do); font-size: 20px; }
   .an-toan { font-size: 15px; color: var(--mo); margin: 0 0 6px; }
 
+  /* nút Hỏi: chỉ hiện khi đang dẫn đường; giữ để nói, thả để gửi */
+  #hoi {
+    display: none; border: 3px solid var(--trang); border-radius: 10px; background: var(--trang); color: #000;
+    font-weight: 800; font-size: clamp(26px, 6vw, 36px); min-height: 110px; padding: 16px; cursor: pointer;
+    align-items: center; justify-content: center; gap: 12px;
+    touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+  }
+  #hoi svg { width: 1.1em; height: 1.1em; flex: none; }
+  body.chay #hoi { display: flex; }
+  #hoi.dang-nghe { background: var(--do); border-color: var(--do); color: #fff; }
+
   /* ---------- màn chữ (hướng dẫn, cài đặt, giới thiệu) ---------- */
   .chu { max-width: 62ch; padding-bottom: 24px; }
   .chu h1 { font-size: 28px; line-height: 1.2; margin: 6px 0 14px; letter-spacing: -0.01em; }
@@ -128,12 +139,17 @@
   nav button svg { width: 26px; height: 26px; }
   nav button[aria-selected="true"] { color: var(--vang); font-weight: 600; }
   body.chay nav { display: none; }
+  body.chay { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 
   /* điện thoại kẹp ngang trên mũ: nút bên trái, câu kính nói bên phải */
   @media (orientation: landscape) and (max-height: 600px) {
     #man-dan { display: grid; grid-template-columns: 1.1fr 1fr; grid-template-rows: 1fr auto; gap: 10px 18px; }
     .khoi-nut { grid-row: 1 / 3; min-height: 0; }
     .loi-noi { align-self: center; }
+    /* đang dẫn đường: nửa phải = nút Hỏi to, câu kính nói ở trên nó */
+    body.chay #man-dan { grid-template-rows: auto 1fr; }
+    body.chay .loi-noi { align-self: start; min-height: 0; }
+    body.chay #hoi { grid-column: 2; grid-row: 2; min-height: 0; }
     #cau { font-size: 30px; }
     .an-toan { display: none; }
   }
@@ -168,6 +184,9 @@
       <div id="canh"></div>
       <div id="tre" aria-hidden="true"></div>
     </div>
+    <button id="hoi" aria-label="Giữ để hỏi. Giữ nút, nói câu hỏi, rồi thả tay.">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      <span>Giữ để hỏi</span></button>
     <p class="an-toan">Bản thử nghiệm: luôn đi cùng người sáng mắt và mang theo gậy.</p>
   </section>
 
@@ -182,6 +201,15 @@
       <li>Đeo tai nghe và tắt tự khóa màn hình. Màn hình tắt thì camera cũng tắt.</li>
       <li>Bấm “Bắt đầu dẫn đường”. Muốn dừng, bấm vào nửa trái màn hình.</li>
     </ol>
+
+    <h2>Hỏi kính</h2>
+    <p>Khi đang dẫn đường, giữ nửa phải màn hình (nút “Giữ để hỏi”), nói câu hỏi, rồi thả tay. Nghe tiếng “tít” là kính đang tìm câu trả lời, thường mất vài giây.</p>
+    <dl class="cau-mau">
+      <dt>Phía trước có gì?</dt><dd>Kính tả những gì camera đang thấy, nói trước thứ có thể làm vấp.</dd>
+      <dt>Chữ trên biển là gì?</dt><dd>Quay mặt về phía biển rồi hỏi.</dd>
+      <dt>Hạn dùng là ngày nào?</dt><dd>Cầm vật trước mặt, chữ quay về phía camera.</dd>
+    </dl>
+    <p>Câu hỏi và hình camera lúc hỏi được gửi tới Google (Gemini) để trả lời. Câu “Dừng lại” luôn được nói trước, kể cả khi kính đang trả lời.</p>
     <div class="canh-bao"><strong>Đây là bản thử, chưa an toàn để đi một mình.</strong> Khi thử ngoài đường, người đeo luôn mở mắt hoặc có người sáng mắt đi kèm.</div>
 
     <h2>Kính sẽ nói gì</h2>
@@ -269,6 +297,45 @@
   document.getElementById('thu-loa').addEventListener('click', () => {
     const a = document.getElementById('am-thu'); a.currentTime = 0; a.play().catch(() => {});
   });
+  // ----- Nút Hỏi: giữ để nói (nhận giọng nói có sẵn trong trình duyệt), thả để gửi -----
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const nutHoi = document.getElementById('hoi'), chuNut = nutHoi.querySelector('span');
+  let nghe = null, chuNghe = '', daGui = true;
+  function guiMotLan() { if (daGui) return; daGui = true; guiCauHoi(chuNghe); }
+  function batDauNghe(e) {
+    if (e) e.preventDefault();
+    if (nghe) return;
+    if (!SR) {
+      const m = 'Máy này chưa nghe được giọng nói. Hãy dùng Safari trên iPhone hoặc Chrome trên Android.';
+      canh(m); noiTaiCho(m); return;
+    }
+    chuNghe = ''; daGui = false;
+    nghe = new SR(); nghe.lang = 'vi-VN'; nghe.interimResults = true; nghe.continuous = true;
+    nghe.onresult = ev => {
+      chuNghe = Array.from(ev.results).map(r => r[0].transcript).join(' ').trim();
+      canh('Đang nghe: ' + chuNghe);
+    };
+    nghe.onerror = ev => {
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+        daGui = true; const m = 'Chưa cho phép dùng micro. Vào Cài đặt của máy để cho phép.'; canh(m); noiTaiCho(m);
+      }
+    };
+    nghe.onend = () => {             // thả tay, hoặc máy tự dừng khi im lâu: gửi những gì đã nghe
+      nghe = null; nutHoi.classList.remove('dang-nghe'); chuNut.textContent = 'Giữ để hỏi';
+      batLaiTieng();                 // iPhone chuyển âm thanh sang chế độ thu khi nghe: bật lại tiếng cho lời dẫn
+      guiMotLan();
+    };
+    bip(1200, 0.08);
+    try { nghe.start(); } catch (err) { nghe = null; canh('Không bật được micro: ' + err.message); return; }
+    nutHoi.classList.add('dang-nghe'); chuNut.textContent = 'Đang nghe…';
+  }
+  function thaNut() { if (nghe) nghe.stop(); }
+  nutHoi.addEventListener('pointerdown', batDauNghe);
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => nutHoi.addEventListener(t, thaNut));
+  nutHoi.addEventListener('contextmenu', e => e.preventDefault());
+  nutHoi.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) batDauNghe(e); });
+  nutHoi.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') thaNut(); });
+
   document.getElementById('tt-may').textContent = MAY || location.host || '(chưa có)';
   document.getElementById('tt-ma').textContent = MA ? 'Đã có (từ mã QR)' : 'Chưa có: quét mã QR trên máy tính';
   document.getElementById('tt-hinh').textContent =

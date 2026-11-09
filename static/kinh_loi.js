@@ -37,6 +37,7 @@ let ws = null, ac = null, luong = null, wakeLock = null, ghi = null, manh = [];
 let soKhungTrenDuong = 1, nghenLuc = 0, treGanDay = [];   // [lúc, ms] phản hồi 10 s gần nhất
 let idKhung = 0, idDaXong = 0, guiLuc = 0, ketNoiLuc = 0, phanHoiCuoi = 0, baoDongLuc = 0, dangMat = false;
 let jsonCho = null;                   // JSON có câu, đang chờ tin wav đi kèm
+let cauDangHoi = "";                  // câu nút Hỏi đang chờ trả lời (giữ dòng "Đang hỏi" trên màn hình)
 let dangPhat = null;                  // {nguon, id, t_chup, cau, audio}
 let cauCho = null;                    // câu thường tới lúc đang nói: phát sau nếu còn mới
 const am = {};                        // âm báo động đã giải mã
@@ -83,6 +84,33 @@ function baoDong(ten) {
   phatBuffer(am[ten], null, 0.2);   // hẹn trên đồng hồ âm thanh: Safari đóng băng setTimeout khi trang bị ẩn
 }
 
+function bip(hz, giay) {
+  if (!ac || ac.state !== 'running') return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.value = hz; g.gain.value = 0.25; o.connect(g); g.connect(ac.destination);
+  o.start(); o.stop(ac.currentTime + giay);
+}
+
+// Câu báo của chính app (lỗi hỏi, chưa nghe rõ...): giọng tiếng Việt có sẵn trên điện thoại, không cần máy tính
+function noiTaiCho(chu) {
+  try {
+    const u = new SpeechSynthesisUtterance(chu); u.lang = 'vi-VN'; u.rate = 1.1;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+// Nút Hỏi: gửi câu hỏi (chữ) lên máy tính; máy tính ghép với khung mới nhất, hỏi Gemini, trả câu + WAV
+function guiCauHoi(cau) {
+  cau = (cau || '').trim();
+  let loi = '';
+  if (!cau) loi = 'Chưa nghe rõ câu hỏi.';
+  else if (!chay || cheDo !== 'truc_tiep' || !ws || ws.readyState !== 1) loi = 'Chưa nối máy tính, chưa hỏi được.';
+  if (loi) { canh(loi); noiTaiCho(loi); return false; }
+  ws.send(JSON.stringify({ lenh: 'hoi', cau }));
+  canh('Đang gửi câu hỏi: ' + cau);
+  return true;
+}
+
 function guiPhanHoi(phan_hoi, id, tre_ms) {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify({ phan_hoi, id, tre_ms: Math.round(tre_ms) }));
 }
@@ -90,15 +118,18 @@ function guiPhanHoi(phan_hoi, id, tre_ms) {
 async function nhanWav(buf) {
   const j = jsonCho; jsonCho = null;
   if (!j) return;
-  const tre = Date.now() - j.t_chup;
-  if (tre > TRE_BO_MS) { guiPhanHoi('bo', j.id, tre); return; }   // câu cũ: vật có thể đã qua
+  const tre = Date.now() - j.t_chup, hoi = j.hoi === 'tra_loi';
+  // câu cũ: vật có thể đã qua. Câu trả lời nút Hỏi không cũ theo nghĩa đó (Gemini mất 3–5 s là thường) -> không bỏ
+  if (tre > TRE_BO_MS && !hoi) { guiPhanHoi('bo', j.id, tre); return; }
   let audio;
   try { audio = await ac.decodeAudioData(buf); }
   catch (e) { guiPhanHoi('bo', j.id, Date.now() - j.t_chup); return; }   // âm hỏng: bỏ, máy được nói lại
-  const p = { id: j.id, t_chup: j.t_chup, cau: j.cau, audio };
+  const p = { id: j.id, t_chup: j.t_chup, cau: j.cau, audio, hoi };
   if (dangPhat) {
     // đang nói: câu thường, hoặc "Dừng lại" khi đang nói "Dừng lại" -> giữ 1 câu chờ (mới nhất) phát sau
     if (!p.cau.startsWith('Dừng lại') || dangPhat.cau.startsWith('Dừng lại')) {
+      // câu trả lời đang chờ không bị câu dẫn đường thường thay chỗ (người dùng đã chủ ý hỏi); "Dừng lại" vẫn cắt
+      if (cauCho && cauCho.hoi && !p.hoi) { guiPhanHoi('thay', p.id, Date.now() - p.t_chup); return; }
       if (cauCho) guiPhanHoi('thay', cauCho.id, Date.now() - cauCho.t_chup);
       cauCho = p; return;
     }
@@ -116,7 +147,7 @@ function phat(p) {
     dangPhat = null;
     guiPhanHoi('da_phat', p.id, tre);
     const c = cauCho; cauCho = null;
-    if (c) (Date.now() - c.t_chup > TRE_BO_MS ? guiPhanHoi('bo', c.id, Date.now() - c.t_chup) : phat(c));
+    if (c) (Date.now() - c.t_chup > TRE_BO_MS && !c.hoi ? guiPhanHoi('bo', c.id, Date.now() - c.t_chup) : phat(c));
   });
   dangPhat = p;
   $('cau').textContent = p.cau;
@@ -132,6 +163,10 @@ function capNhatSoKhung(tre) {
 }
 
 function nhanJson(j) {
+  // tin hỏi đáp không gắn với khung nào (không có id): xử lý riêng, không đụng nhịp gửi khung
+  if (j.hoi === 'dang_hoi') { cauDangHoi = j.cau_hoi; canh('Đang hỏi: ' + j.cau_hoi); bip(660, 0.1); return; }
+  if (j.hoi === 'loi') { cauDangHoi = ''; canh(j.loi_hoi); noiTaiCho(j.loi_hoi); return; }
+  if (j.hoi === 'tra_loi') cauDangHoi = '';
   idDaXong = Math.max(idDaXong, j.id);   // máy chủ xử lý theo thứ tự: khung cũ hơn bị bỏ qua cũng coi như xong
   if (j.loi) { canh('Máy tính lỗi: ' + j.loi); return; }   // lỗi liên tục > 1 s -> canhGac báo động như mất kết nối
   phanHoiCuoi = Date.now();
@@ -140,7 +175,7 @@ function nhanJson(j) {
   capNhatSoKhung(tre);
   $('tre').innerHTML = tre + ' <small>ms (xử lý ' + j.ms_xu_ly + ')</small>';
   $('tre').style.color = tre < 300 ? 'var(--xanh)' : tre < 600 ? 'var(--vang)' : 'var(--do)';
-  canh('');
+  canh(cauDangHoi ? 'Đang hỏi: ' + cauDangHoi : '');   // giữ dòng "Đang hỏi" tới khi có câu trả lời
   if (j.cau) jsonCho = j;
 }
 
