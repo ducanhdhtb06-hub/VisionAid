@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="VisionAid">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#2A2B27">
+<link rel="manifest" href="static/manifest.json">
+<link rel="apple-touch-icon" href="static/icon-180.png">
+<link rel="icon" href="static/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;800&display=swap" rel="stylesheet">
+<title>VisionAid</title>
+<style>
+  :root {
+    --nhua: #2A2B27;      /* nhựa đường */
+    --nhua-sang: #3A3B36;
+    --vang: #F5C400;      /* gạch dẫn đường */
+    --vang-dam: #C99F00;
+    --trang: #FFFFFF;
+    --mo: #C9C9C2;
+    --do: #FF5A36;        /* cảnh báo */
+    --xanh: #5BE08A;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--nhua); color: var(--trang);
+    font-family: 'Be Vietnam Pro', -apple-system, system-ui, sans-serif; font-size: 18px; line-height: 1.45;
+    display: flex; flex-direction: column;
+    padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible { outline: 4px solid var(--trang); outline-offset: 3px; }
+  button { font: inherit; }
+
+  /* ---------- đầu trang ---------- */
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 10px; }
+  .ten { font-weight: 800; font-size: 22px; letter-spacing: -0.01em; }
+  .ten span { color: var(--vang); }
+  #hang { display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--mo); text-align: right; }
+  #cham { width: 14px; height: 14px; border-radius: 50%; background: #777; flex: none; }
+
+  main { flex: 1; min-height: 0; overflow-y: auto; }
+  section[hidden] { display: none !important; }
+
+  /* ---------- màn dẫn đường ---------- */
+  #man-dan { display: flex; flex-direction: column; gap: 14px; height: 100%; }
+  .khoi-nut { position: relative; flex: 1; min-height: 240px; display: flex; }
+  /* nút = một viên gạch dẫn đường: vạch nổi chỉ hướng; đang chạy -> gạch chấm cảnh báo */
+  #nut {
+    flex: 1; border: 0; border-radius: 10px; cursor: pointer;
+    color: #000; font-weight: 800; font-size: clamp(34px, 9vw, 52px); line-height: 1.1;
+    background-color: var(--vang);
+    background-image: repeating-linear-gradient(90deg,
+      transparent 0 9%, rgba(0,0,0,.13) 9% 10%, rgba(255,255,255,.28) 10% 11%, transparent 11% 20%);
+    box-shadow: inset 0 -8px 0 var(--vang-dam);
+    padding: 24px; text-align: center;
+  }
+  #nut:active { transform: translateY(2px); box-shadow: inset 0 -4px 0 var(--vang-dam); }
+  #nut.dung {
+    color: #000;
+    background-image:
+      radial-gradient(circle at 50% 45%, rgba(255,255,255,.35) 0 22%, rgba(0,0,0,.16) 26% 30%, transparent 31%);
+    background-size: 56px 56px; background-position: center;
+  }
+  #xem {
+    position: absolute; right: 10px; top: 10px; width: 96px; aspect-ratio: 4 / 3; object-fit: cover;
+    border-radius: 6px; border: 2px solid #000; background: #000; display: none; pointer-events: none;
+  }
+  body.chay #xem { display: block; }
+  .loi-noi { min-height: 3.2em; }
+  #cau { font-size: 26px; font-weight: 800; line-height: 1.25; }
+  #cau:empty::before { content: 'Kính sẽ nói ở đây.'; color: var(--mo); font-weight: 400; font-size: 20px; }
+  #canh { color: var(--vang); font-size: 17px; min-height: 1.2em; }
+  #tre { font-size: 14px; color: var(--mo); font-variant-numeric: tabular-nums; }
+  #tre small { font-size: inherit; }
+  #khongcb { display: none; font-weight: 800; color: var(--do); font-size: 20px; }
+  .an-toan { font-size: 15px; color: var(--mo); margin: 0 0 6px; }
+
+  /* ---------- màn chữ (hướng dẫn, cài đặt, giới thiệu) ---------- */
+  .chu { max-width: 62ch; padding-bottom: 24px; }
+  .chu h1 { font-size: 28px; line-height: 1.2; margin: 6px 0 14px; letter-spacing: -0.01em; }
+  .chu h2 { font-size: 20px; margin: 26px 0 8px; color: var(--vang); }
+  .chu p, .chu li { color: #ECECE6; }
+  .chu ol { padding-left: 1.4em; margin: 0; }
+  .chu ol li { margin-bottom: 10px; padding-left: 4px; }
+  .chu ol li::marker { color: var(--vang); font-weight: 800; }
+  .cau-mau { margin: 0; }
+  .cau-mau dt { font-weight: 800; margin-top: 14px; }
+  .cau-mau dt::before { content: '“'; color: var(--vang); }
+  .cau-mau dt::after { content: '”'; color: var(--vang); }
+  .cau-mau dd { margin: 2px 0 0; color: var(--mo); }
+  .canh-bao { border-left: 6px solid var(--do); padding: 4px 0 4px 14px; margin: 18px 0; }
+  .canh-bao strong { color: var(--trang); }
+  a { color: var(--vang); text-underline-offset: 3px; }
+
+  .lua-chon { display: flex; flex-direction: column; gap: 10px; }
+  .lua-chon label {
+    display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: 10px;
+    border: 2px solid var(--nhua-sang); background: var(--nhua-sang); cursor: pointer;
+  }
+  .lua-chon label:has(input:checked) { border-color: var(--vang); }
+  .lua-chon input { width: 24px; height: 24px; margin: 2px 0 0; accent-color: var(--vang); flex: none; }
+  .lua-chon small { display: block; color: var(--mo); font-size: 15px; }
+  .nut-phu {
+    border: 2px solid var(--vang); background: transparent; color: var(--vang); font-weight: 600;
+    padding: 12px 18px; border-radius: 10px; cursor: pointer; min-height: 48px;
+  }
+  .bang { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
+  .bang dt { color: var(--mo); }
+  .bang dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+
+  /* ---------- thanh tab ---------- */
+  nav {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    margin: 0 calc(-1 * max(16px, env(safe-area-inset-left))); padding: 6px 8px max(8px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--nhua-sang); background: var(--nhua);
+  }
+  nav button {
+    border: 0; background: transparent; color: var(--mo); padding: 8px 2px; min-height: 56px; border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; cursor: pointer;
+  }
+  nav button svg { width: 26px; height: 26px; }
+  nav button[aria-selected="true"] { color: var(--vang); font-weight: 600; }
+  body.chay nav { display: none; }
+
+  /* điện thoại kẹp ngang trên mũ: nút bên trái, câu kính nói bên phải */
+  @media (orientation: landscape) and (max-height: 600px) {
+    #man-dan { display: grid; grid-template-columns: 1.1fr 1fr; grid-template-rows: 1fr auto; gap: 10px 18px; }
+    .khoi-nut { grid-row: 1 / 3; min-height: 0; }
+    .loi-noi { align-self: center; }
+    #cau { font-size: 30px; }
+    .an-toan { display: none; }
+  }
+
+  #xoay, #battieng {
+    display: none; position: fixed; inset: 0; z-index: 3; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; font-size: 30px; font-weight: 800;
+  }
+  #xoay { background: rgba(42,43,39,.96); }
+  #battieng { background: var(--do); color: #fff; }
+  @media (orientation: portrait) { body.chay #xoay { display: flex; } }
+  @media (prefers-reduced-motion: reduce) { #nut:active { transform: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="ten">Vision<span>Aid</span></div>
+  <div id="hang" role="status" aria-live="polite"><div id="cham" aria-hidden="true"></div><div id="trangthai">Chưa chạy</div></div>
+</header>
+
+<main>
+  <!-- ===== Dẫn đường ===== -->
+  <section id="man-dan" aria-label="Dẫn đường">
+    <div class="khoi-nut">
+      <button id="nut" data-bat-dau="Bắt đầu dẫn đường" data-dung="Dừng">Bắt đầu dẫn đường</button>
+      <video id="xem" playsinline muted autoplay aria-hidden="true"></video>
+    </div>
+    <div class="loi-noi">
+      <!-- không đọc lại bằng VoiceOver: câu đã được phát thành tiếng qua tai nghe -->
+      <div id="cau"></div>
+      <div id="khongcb">Chỉ quay video, không cảnh báo</div>
+      <div id="canh"></div>
+      <div id="tre" aria-hidden="true"></div>
+    </div>
+    <p class="an-toan">Bản thử nghiệm: luôn đi cùng người sáng mắt và mang theo gậy.</p>
+  </section>
+
+  <!-- ===== Hướng dẫn ===== -->
+  <section id="man-huong-dan" class="chu" hidden aria-label="Hướng dẫn">
+    <h1>Đeo và bắt đầu</h1>
+    <p>Chưa có kính, điện thoại của bạn đóng vai kính: camera nhìn đường, máy tính phân tích, tai nghe đọc lời dẫn.</p>
+    <ol>
+      <li>Bật chương trình trên máy tính, rồi quét mã QR hiện trên màn hình bằng camera điện thoại.</li>
+      <li>Thêm VisionAid vào màn hình chính để lần sau mở như một app: trên iPhone bấm nút Chia sẻ, chọn “Thêm vào MH chính”; trên Android mở menu ⋮, chọn “Cài đặt ứng dụng”.</li>
+      <li>Kẹp điện thoại nằm ngang lên vành mũ, camera sau nhìn ra trước, hơi chúc xuống khoảng 10 độ.</li>
+      <li>Đeo tai nghe và tắt tự khóa màn hình. Màn hình tắt thì camera cũng tắt.</li>
+      <li>Bấm “Bắt đầu dẫn đường”. Muốn dừng, bấm vào nửa trái màn hình.</li>
+    </ol>
+    <div class="canh-bao"><strong>Đây là bản thử, chưa an toàn để đi một mình.</strong> Khi thử ngoài đường, người đeo luôn mở mắt hoặc có người sáng mắt đi kèm.</div>
+
+    <h2>Kính sẽ nói gì</h2>
+    <dl class="cau-mau">
+      <dt>Đã thấy vạch dẫn đường.</dt><dd>Bạn đang ở trên dải gạch vàng. Cứ đi thẳng, kính sẽ im khi bạn đi đúng.</dd>
+      <dt>Vạch ở bên phải.</dt><dd>Dải gạch nằm bên phải: bước sang phải cho tới khi chân chạm gạch.</dd>
+      <dt>Xe máy chắn vạch bên phải. Đi sang trái.</dt><dd>Có vật đỗ trên dải gạch. Đi vòng sang trái rồi quay lại gạch.</dd>
+      <dt>Vật cản chắn vạch. Dùng gậy dò đường vòng.</dt><dd>Không chắc bên nào trống: dùng gậy dò để tìm lối.</dd>
+      <dt>Xe máy, phía trước, đang tới.</dt><dd>Có xe đang chạy về phía bạn.</dd>
+      <dt>Dừng lại.</dt><dd>Nguy hiểm ngay trước mặt. Đứng yên.</dd>
+      <dt>Sắp xuống lòng đường, phía trước.</dt><dd>Phía trước là mép vỉa hè.</dd>
+    </dl>
+    <p>Tiếng bíp rồi câu báo động nghĩa là mất kết nối với máy tính: kính không còn nhìn đường nữa, hãy dừng và dùng gậy.</p>
+  </section>
+
+  <!-- ===== Cài đặt ===== -->
+  <section id="man-cai-dat" class="chu" hidden aria-label="Cài đặt">
+    <h1>Cài đặt</h1>
+    <h2>Khi bấm bắt đầu</h2>
+    <div class="lua-chon" id="chedo" role="radiogroup">
+      <label><input type="radio" name="cd" value="truc_tiep" checked>
+        <span>Dẫn đường<small>Gửi hình lên máy tính và đọc lời dẫn.</small></span></label>
+      <label><input type="radio" name="cd" value="chi_ghi">
+        <span>Chỉ quay video<small>Không cảnh báo gì. Dùng để quay đường mới cho nhóm phát triển; video lưu vào điện thoại khi bấm Dừng.</small></span></label>
+    </div>
+
+    <h2>Tai nghe</h2>
+    <p>Bấm để nghe thử. Không nghe thấy thì tăng âm lượng hoặc kiểm tra kết nối tai nghe.</p>
+    <button class="nut-phu" id="thu-loa">Nghe thử</button>
+    <audio id="am-thu" src="static/da_ket_noi.wav" preload="none"></audio>
+
+    <h2>Kết nối</h2>
+    <dl class="bang">
+      <dt>Máy tính</dt><dd id="tt-may"></dd>
+      <dt>Mã</dt><dd id="tt-ma"></dd>
+      <dt>Hình gửi đi</dt><dd id="tt-hinh"></dd>
+    </dl>
+  </section>
+
+  <!-- ===== Giới thiệu ===== -->
+  <section id="man-gioi-thieu" class="chu" hidden aria-label="Giới thiệu">
+    <h1>VisionAid</h1>
+    <p>Kính AI dẫn đường cho người khiếm thị Việt Nam: đi theo dải gạch dẫn đường trên vỉa hè, báo khi có xe đỗ chắn lối, xe đang tới hay sắp xuống lòng đường.</p>
+    <p>Kính thật sẽ là một camera nhỏ gắn trên gọng, nối với điện thoại này. Trong lúc làm phần cứng, camera điện thoại thay cho kính; khi có kính, app giữ nguyên, chỉ đổi nguồn hình.</p>
+    <div class="canh-bao"><strong>Bản thử nghiệm.</strong> Chưa được kiểm chứng với người khiếm thị đi một mình. Không thay được gậy hay người dẫn đường.</div>
+    <dl class="bang">
+      <dt>Tác giả</dt><dd>Đặng Đức Anh</dd>
+      <dt>Mã nguồn</dt><dd><a href="https://github.com/ducanhdhtb06-hub/VisionAid">github.com/ducanhdhtb06-hub/VisionAid</a></dd>
+    </dl>
+  </section>
+</main>
+
+<nav role="tablist" aria-label="Màn hình">
+  <button role="tab" aria-selected="true" data-man="man-dan">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3v18M16 3v18M12 3v4M12 10v4M12 17v4"/></svg>Dẫn đường</button>
+  <button role="tab" aria-selected="false" data-man="man-huong-dan">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>Hướng dẫn</button>
+  <button role="tab" aria-selected="false" data-man="man-cai-dat">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Cài đặt</button>
+  <button role="tab" aria-selected="false" data-man="man-gioi-thieu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>Giới thiệu</button>
+</nav>
+
+<div id="battieng" onclick="batLaiTieng()">Chạm để bật tiếng</div>
+<div id="xoay">Xoay ngang điện thoại<br>và kẹp lên vành mũ</div>
+<audio id="cam" loop playsinline></audio>
+<canvas id="cv" width="640" height="360" hidden></canvas>
+<script src="static/kinh_loi.js"></script>
+<script>
+// Chuyển màn. Đang dẫn đường thì thanh tab ẩn (kinh_loi.js thêm class "chay" vào body) và luôn ở màn dẫn đường.
+(function () {
+  const tabs = document.querySelectorAll('nav [role=tab]');
+  function moMan(id) {
+    tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.man === id)));
+    document.querySelectorAll('main > section').forEach(s => { s.hidden = s.id !== id; });
+    try { localStorage.setItem('visionaid_man', id); } catch (e) {}
+  }
+  tabs.forEach(t => t.addEventListener('click', () => moMan(t.dataset.man)));
+  new MutationObserver(() => { if (document.body.classList.contains('chay')) moMan('man-dan'); })
+    .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  let dau = 'man-dan';
+  try { dau = localStorage.getItem('visionaid_man') || dau; } catch (e) {}
+  moMan(document.getElementById(dau) ? dau : 'man-dan');
+
+  document.getElementById('thu-loa').addEventListener('click', () => {
+    const a = document.getElementById('am-thu'); a.currentTime = 0; a.play().catch(() => {});
+  });
+  document.getElementById('tt-may').textContent = MAY || location.host || '(chưa có)';
+  document.getElementById('tt-ma').textContent = MA ? 'Đã có (từ mã QR)' : 'Chưa có: quét mã QR trên máy tính';
+  document.getElementById('tt-hinh').textContent =
+    (KHUNG_43 ? '640×480, giống camera kính' : '640×360') + ', tối đa ' + FPS + ' hình/giây';
+})();
+</script>
+</body>
+</html>

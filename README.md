@@ -45,6 +45,21 @@ nền để chạy thử nhanh; các thành phần lấy từ dự án gốc s�
 
 Mọi câu nói và hình vẽ trong video là đầu ra thật của hệ thống trên video quay bằng điện thoại, không dựng giả.
 
+## App: điện thoại đóng vai kính
+
+**Mở app: https://ducanhdhtb06-hub.github.io/VisionAid/**
+
+Khi chưa có kính, camera điện thoại thay cho camera trên kính: kẹp điện thoại nằm ngang lên vành mũ, đeo tai nghe, bấm
+"Bắt đầu dẫn đường". Ảnh được gửi về máy tính chạy AI, lời dẫn đọc qua tai nghe. Khi có kính, app giữ nguyên, chỉ đổi nguồn
+hình.
+
+![app VisionAid](docs/anh/app_man_hinh.jpg)
+
+- Cài như app: trên iPhone bấm Chia sẻ → "Thêm vào MH chính"; trên Android mở menu ⋮ → "Cài đặt ứng dụng".
+- App cần **máy tính chạy AI** đang bật: máy tính in một mã QR, quét mã đó để app biết gửi hình tới đâu. Mở link trần
+  không quét mã thì xem được giao diện và hướng dẫn, nhưng chưa dẫn đường được.
+- Mã nguồn app: [`app/`](app/) (HTML + JavaScript, không cần cài đặt gì).
+
 ## Kiến trúc
 
 Các sơ đồ dưới đây mô tả hệ thống đầy đủ. Repo này chứa **hai module** cùng phần phụ thuộc cần để chạy test; máy chủ
