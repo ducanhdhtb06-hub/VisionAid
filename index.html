@@ -322,14 +322,16 @@
     };
     nghe.onend = () => {             // thả tay, hoặc máy tự dừng khi im lâu: gửi những gì đã nghe
       nghe = null; nutHoi.classList.remove('dang-nghe'); chuNut.textContent = 'Giữ để hỏi';
+      hetIm();                       // hết nghe: kính nói lại (câu giữ lại còn mới thì phát)
       batLaiTieng();                 // iPhone chuyển âm thanh sang chế độ thu khi nghe: bật lại tiếng cho lời dẫn
       guiMotLan();
     };
     bip(1200, 0.08);
     try { nghe.start(); } catch (err) { nghe = null; canh('Không bật được micro: ' + err.message); return; }
+    batDauIm();                      // đang nghe: kính im, tiếng kính khỏi lọt vào micro
     nutHoi.classList.add('dang-nghe'); chuNut.textContent = 'Đang nghe…';
   }
-  function thaNut() { if (nghe) nghe.stop(); }
+  function thaNut() { moKhoaGiong(); if (nghe) nghe.stop(); }   // lúc thả tay vẫn là lần chạm: mở khóa giọng đọc
   nutHoi.addEventListener('pointerdown', batDauNghe);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => nutHoi.addEventListener(t, thaNut));
   nutHoi.addEventListener('contextmenu', e => e.preventDefault());

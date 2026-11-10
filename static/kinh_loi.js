@@ -71,6 +71,7 @@ function phatBuffer(buf, onXong, sau = 0) {
 
 function baoDong(ten) {
   if (!am[ten]) return;
+  catTaiCho();                       // báo động cắt cả câu trả lời điện thoại đang tự đọc
   if (dangPhat) {                    // báo động cắt câu đang nói: báo đúng là bị cắt, bỏ câu chờ (đã cũ)
     const cu = dangPhat; dangPhat = null;
     try { cu.nguon.onended = null; cu.nguon.stop(); } catch (e) {}
@@ -99,6 +100,71 @@ function noiTaiCho(chu) {
   } catch (e) {}
 }
 
+// Câu trả lời nút Hỏi mà Gemini không đọc được (quá tải / mất mạng; câu có thể từ model trên máy tính): điện thoại tự
+// đọc. Vẫn một người nói: câu dẫn đường thường chờ đọc xong; "Dừng lại" và báo động cắt ngang.
+let dangNoiTaiCho = false, luotTaiCho = 0;
+function catTaiCho() {
+  dangNoiTaiCho = false;
+  try { speechSynthesis.cancel(); } catch (e) {}
+}
+
+function xongTaiCho(luot) {
+  if (luot !== luotTaiCho || !dangNoiTaiCho) return;   // báo xong của lượt đọc cũ (vd. hẹn giờ an toàn tới muộn)
+  dangNoiTaiCho = false;
+  const c = cauCho; cauCho = null;
+  if (c && !dangPhat) (Date.now() - c.t_chup > TRE_BO_MS && !c.hoi ? guiPhanHoi('bo', c.id, Date.now() - c.t_chup) : phat(c));
+}
+
+// Đang giữ nút Hỏi (đang nghe câu hỏi): kính IM — tiếng kính lọt vào micro làm câu hỏi bị nghe sai (người dùng yêu cầu
+// 2026-11-10). Câu tới lúc này (cả "Dừng lại") chỉ giữ câu mới nhất; thả tay: còn mới thì phát, cũ thì bỏ để máy chủ
+// nói lại câu mới. Báo động mất kết nối cũng chờ (canhGac báo lại ngay sau khi thả nếu vẫn mất).
+let dangIm = false;
+function batDauIm() {
+  dangIm = true;
+  catTaiCho();
+  if (dangPhat) {
+    const cu = dangPhat; dangPhat = null;
+    try { cu.nguon.onended = null; cu.nguon.stop(); } catch (e) {}
+    guiPhanHoi('bi_cat', cu.id, Date.now() - cu.t_chup);
+  }
+}
+
+function hetIm() {
+  if (!dangIm) return;
+  dangIm = false;
+  const c = cauCho; cauCho = null;
+  if (c && !dangPhat) (Date.now() - c.t_chup > TRE_BO_MS && !c.hoi ? guiPhanHoi('bo', c.id, Date.now() - c.t_chup) : phat(c));
+}
+
+// Báo về máy chủ (log.jsonl, phan_hoi='tai_cho') từng bước điện thoại tự đọc: iPhone thật im lặng (2026-11-10) mà
+// trang không có lỗi nào hiện ra -> cần biết iOS có bắt đầu đọc không, lỗi gì, máy có giọng tiếng Việt không.
+function baoTaiCho(su_kien, them) {
+  try { if (ws && ws.readyState === 1) ws.send(JSON.stringify(Object.assign({ phan_hoi: 'tai_cho', su_kien }, them))); }
+  catch (e) {}
+}
+
+// iOS chỉ cho trang đọc thành tiếng sau khi đã đọc một lần NGAY TRONG lúc người dùng chạm; câu trả lời tới qua
+// mạng (không gắn với lần chạm nào) thì bị lặng lẽ bỏ qua. Gọi ở nút Bắt đầu và lúc thả nút Hỏi.
+function moKhoaGiong() {
+  try { speechSynthesis.speak(new SpeechSynthesisUtterance('')); } catch (e) {}
+}
+
+function docTraLoiTaiCho(chu) {
+  $('cau').textContent = chu;
+  const luot = ++luotTaiCho;
+  try {
+    const giong_viet = speechSynthesis.getVoices().filter(v => (v.lang || '').toLowerCase().startsWith('vi')).map(v => v.name);
+    baoTaiCho('goi', { giong_viet, so_chu: chu.length });
+    const u = new SpeechSynthesisUtterance(chu); u.lang = 'vi-VN'; u.rate = 1.1;
+    u.onstart = () => baoTaiCho('bat_dau');
+    u.onend = () => { baoTaiCho('xong'); xongTaiCho(luot); };
+    u.onerror = e => { baoTaiCho('loi', { chi_tiet: e && e.error }); xongTaiCho(luot); };
+    speechSynthesis.cancel(); dangNoiTaiCho = true; speechSynthesis.speak(u);
+    setTimeout(() => { if (luot === luotTaiCho && dangNoiTaiCho) baoTaiCho('het_gio'); xongTaiCho(luot); },
+      2000 + chu.length * 120);   // lưới an toàn: iOS đôi khi không gọi onend
+  } catch (e) { dangNoiTaiCho = false; baoTaiCho('loi', { chi_tiet: String(e) }); }
+}
+
 // Nút Hỏi: gửi câu hỏi (chữ) lên máy tính; máy tính ghép với khung mới nhất, hỏi Gemini, trả câu + WAV
 function guiCauHoi(cau) {
   cau = (cau || '').trim();
@@ -125,6 +191,17 @@ async function nhanWav(buf) {
   try { audio = await ac.decodeAudioData(buf); }
   catch (e) { guiPhanHoi('bo', j.id, Date.now() - j.t_chup); return; }   // âm hỏng: bỏ, máy được nói lại
   const p = { id: j.id, t_chup: j.t_chup, cau: j.cau, audio, hoi };
+  if (dangIm) {                        // đang nghe câu hỏi: im, giữ câu mới nhất tới lúc thả tay
+    if (cauCho) guiPhanHoi('thay', cauCho.id, Date.now() - cauCho.t_chup);
+    cauCho = p; return;
+  }
+  if (dangNoiTaiCho && !dangPhat) {    // điện thoại đang tự đọc câu trả lời
+    if (!p.cau.startsWith('Dừng lại')) {
+      if (cauCho) guiPhanHoi('thay', cauCho.id, Date.now() - cauCho.t_chup);
+      cauCho = p; return;
+    }
+    catTaiCho();                       // "Dừng lại" cắt ngang câu trả lời
+  }
   if (dangPhat) {
     // đang nói: câu thường, hoặc "Dừng lại" khi đang nói "Dừng lại" -> giữ 1 câu chờ (mới nhất) phát sau
     if (!p.cau.startsWith('Dừng lại') || dangPhat.cau.startsWith('Dừng lại')) {
@@ -166,6 +243,7 @@ function nhanJson(j) {
   // tin hỏi đáp không gắn với khung nào (không có id): xử lý riêng, không đụng nhịp gửi khung
   if (j.hoi === 'dang_hoi') { cauDangHoi = j.cau_hoi; canh('Đang hỏi: ' + j.cau_hoi); bip(660, 0.1); return; }
   if (j.hoi === 'loi') { cauDangHoi = ''; canh(j.loi_hoi); noiTaiCho(j.loi_hoi); return; }
+  if (j.hoi === 'tra_loi' && j.doc_tai_cho) { cauDangHoi = ''; canh(''); docTraLoiTaiCho(j.cau); return; }
   if (j.hoi === 'tra_loi') cauDangHoi = '';
   idDaXong = Math.max(idDaXong, j.id);   // máy chủ xử lý theo thứ tự: khung cũ hơn bị bỏ qua cũng coi như xong
   if (j.loi) { canh('Máy tính lỗi: ' + j.loi); return; }   // lỗi liên tục > 1 s -> canhGac báo động như mất kết nối
@@ -227,7 +305,8 @@ function canhGac() {   // chạy độc lập với máy tính: mất phản h�
   if (now - Math.max(phanHoiCuoi, ketNoiLuc) > han) {
     dangMat = true;
     trangThai(saiMa ? 'SAI MÃ – quét lại mã QR' : 'MẤT KẾT NỐI', 'var(--do)');
-    if (now - baoDongLuc > 4000) { baoDongLuc = now; baoDong('mat_ket_noi'); }
+    // đang giữ nút Hỏi: im; thả tay xong canhGac (250 ms) báo ngay nếu vẫn mất
+    if (now - baoDongLuc > 4000 && !dangIm) { baoDongLuc = now; baoDong('mat_ket_noi'); }
   }
 }
 
@@ -255,6 +334,7 @@ async function batDauThat() {
   // camera lâu là bị từ chối), và lời xin có thể treo tới lần chạm sau (đo trên WebKit 2026-11-10: treo ~19 s) ->
   // chờ nó thì camera đã bật mà chưa nối máy tính, không lời dẫn, không báo động.
   giuSang();
+  moKhoaGiong();                       // cũng phải trong lúc chạm, trước mọi await
   $('cam').src = amCam(); await $('cam').play().catch(() => {});
   ac = ac || new (window.AudioContext || window.webkitAudioContext)();
   await ac.resume();
