@@ -231,8 +231,13 @@ function canhGac() {   // chạy độc lập với máy tính: mất phản h�
   }
 }
 
+let dangBatDau = false;
 async function giuSang() {
-  try { wakeLock = await navigator.wakeLock.request('screen'); canh(''); }
+  try {
+    const k = await navigator.wakeLock.request('screen');
+    if (!chay && !dangBatDau) { k.release().catch(() => {}); return; }   // đã bấm Dừng trong lúc chờ khóa
+    wakeLock = k; canh('');
+  }
   catch (e) { canh('Không giữ được màn hình sáng: vào Cài đặt > Màn hình > Tự động khóa > Không bao giờ'); }
 }
 
@@ -241,6 +246,15 @@ async function batDau() {
   if (!MA && cheDo === 'truc_tiep') {   // mở link trần (vd. trang Pages): chưa biết máy tính nào -> đừng bật camera
     canh('Chưa nối máy tính: bật chương trình trên máy tính rồi quét mã QR.'); return;
   }
+  dangBatDau = true;
+  try { await batDauThat(); } finally { dangBatDau = false; }
+}
+
+async function batDauThat() {
+  // Xin giữ màn hình sáng NGAY lúc chạm và KHÔNG chờ: WebKit chỉ cho xin trong vài giây sau lần chạm (hỏi quyền
+  // camera lâu là bị từ chối), và lời xin có thể treo tới lần chạm sau (đo trên WebKit 2026-11-10: treo ~19 s) ->
+  // chờ nó thì camera đã bật mà chưa nối máy tính, không lời dẫn, không báo động.
+  giuSang();
   $('cam').src = amCam(); await $('cam').play().catch(() => {});
   ac = ac || new (window.AudioContext || window.webkitAudioContext)();
   await ac.resume();
@@ -249,7 +263,6 @@ async function batDau() {
   luong = await navigator.mediaDevices.getUserMedia({ audio: false,
     video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
   $('xem').srcObject = luong;
-  await giuSang();
   chay = true; document.body.classList.add('chay');
   $('nut').textContent = $('nut').dataset.dung || 'Dừng'; $('nut').classList.add('dung');
   if (cheDo === 'chi_ghi') {
