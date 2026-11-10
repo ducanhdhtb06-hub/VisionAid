@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Thử kính</title>
+<style>
+  :root { --nen: #000; --chu: #fff; --xanh: #3ddc84; --vang: #ffd23f; --do: #ff4d4d; --xam: #888; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--nen); color: var(--chu);
+    font-family: -apple-system, system-ui, sans-serif; -webkit-user-select: none; user-select: none; }
+  body { display: flex; flex-direction: column; padding: max(12px, env(safe-area-inset-top)) 16px 16px; gap: 10px; }
+  #hang { display: flex; align-items: center; gap: 12px; font-size: 20px; }
+  #cham { width: 18px; height: 18px; border-radius: 50%; background: var(--xam); flex: none; }
+  #tre { font-size: 56px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  #tre small { font-size: 22px; font-weight: 600; }
+  #cau { font-size: 26px; font-weight: 700; min-height: 2.4em; }
+  #canh { font-size: 20px; color: var(--vang); min-height: 1.2em; }
+  #nut { flex: 1; min-height: 140px; border: 0; border-radius: 22px; font-size: 40px; font-weight: 800;
+    background: var(--xanh); color: #000; }
+  #nut.dung { background: var(--do); color: #fff; }
+  #chedo { display: flex; gap: 10px; }
+  #chedo label { flex: 1; text-align: center; padding: 14px; border: 2px solid var(--xam); border-radius: 14px; font-size: 20px; }
+  #chedo input { display: none; }
+  #chedo input:checked + span { color: var(--xanh); }
+  #chedo label:has(input:checked) { border-color: var(--xanh); }
+  #xem { width: 160px; border-radius: 10px; align-self: flex-end; }
+  #khongcb { display: none; font-size: 28px; font-weight: 800; color: var(--do); text-align: center; }
+  #xoay { display: none; position: fixed; inset: 0; background: #000d; font-size: 32px; font-weight: 800;
+    align-items: center; justify-content: center; text-align: center; padding: 24px; }
+  #battieng { display: none; position: fixed; inset: 0; background: var(--do); color: #fff; font-size: 40px;
+    font-weight: 800; align-items: center; justify-content: center; text-align: center; z-index: 2; }
+  @media (orientation: portrait) { body.chay #xoay { display: flex; } }
+</style>
+</head>
+<body>
+<div id="hang"><div id="cham"></div><div id="trangthai">Chưa chạy</div></div>
+<div id="tre">– <small>ms</small></div>
+<div id="cau"></div>
+<div id="canh"></div>
+<div id="khongcb">CHỈ GHI – KHÔNG CẢNH BÁO</div>
+<div id="chedo">
+  <label><input type="radio" name="cd" value="truc_tiep" checked><span>Trực tiếp</span></label>
+  <label><input type="radio" name="cd" value="chi_ghi"><span>Chỉ ghi</span></label>
+</div>
+<button id="nut">Bắt đầu</button>
+<video id="xem" playsinline muted autoplay></video>
+<div id="battieng" onclick="batLaiTieng()">CHẠM ĐỂ BẬT TIẾNG</div>
+<div id="xoay">Xoay ngang điện thoại<br>(kẹp ngang trên mũ)</div>
+<audio id="cam" loop playsinline></audio>
+<canvas id="cv" width="640" height="360" hidden></canvas>
+<script src="/static/kinh_loi.js"></script>
+</body>
+</html>

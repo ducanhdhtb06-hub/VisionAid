@@ -56,9 +56,12 @@ hình.
 ![app VisionAid](docs/anh/app_man_hinh.jpg)
 
 - Cài như app: trên iPhone bấm Chia sẻ → "Thêm vào MH chính"; trên Android mở menu ⋮ → "Cài đặt ứng dụng".
-- **Hỏi kính:** khi đang dẫn đường, giữ nửa phải màn hình ("Giữ để hỏi"), nói câu hỏi ("Phía trước có gì?", "Chữ trên
-  biển là gì?") rồi thả tay. Điện thoại tự chuyển giọng nói thành chữ; máy tính gửi câu hỏi kèm hình camera lúc đó tới
-  Gemini và đọc câu trả lời (thường 5–8 giây). "Dừng lại" luôn được nói trước, kể cả khi đang trả lời.
+- **Hỏi kính:** khi đang dẫn đường, giữ nửa phải màn hình ("Giữ để hỏi"), nói câu hỏi ("Phía trước có gì?", "Bên phải
+  có gì?") rồi thả tay. Điện thoại tự chuyển giọng nói thành chữ; máy tính hỏi **model nhìn chạy ngay trên máy**
+  (Qwen3-VL-2B) với hình camera lúc đó, điện thoại đọc câu trả lời — **dưới 1 giây**, ảnh **không rời máy tính**.
+  Trong lúc giữ nút, kính **im** (tiếng kính lọt vào micro làm câu hỏi bị nghe sai), kể cả cảnh báo: chỉ hỏi khi đang
+  đứng yên. Thả tay xong, "Dừng lại" vẫn được nói trước, kể cả khi đang trả lời. Muốn câu trả lời kỹ hơn: chạy máy chủ
+  với `--hoi-gemini` (ảnh gửi tới Google, chậm hơn).
 - App cần **máy tính chạy AI** đang bật: máy tính in một mã QR, quét mã đó để app biết gửi hình tới đâu. Mở link trần
   không quét mã thì xem được giao diện và hướng dẫn, nhưng chưa dẫn đường được.
 - Mã nguồn app: [`app/`](app/) (HTML + JavaScript, không cần cài đặt gì).
@@ -103,6 +106,24 @@ không đọc số mét, không bao giờ bảo đi về phía lòng đường h
 
 ## Module quan sát nhờ API
 
+### Model nhìn chạy trên máy (mặc định cho nút Hỏi của app)
+
+[llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` (MIT) chạy **Qwen3-VL-2B-Instruct** bản GGUF Q4_K_M
+(Apache-2.0, [Qwen/Qwen3-VL-2B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF)) trên GPU qua
+Vulkan, cổng tương thích OpenAI `http://127.0.0.1:8090/v1`. Máy chủ của app (`chay.py`) tự bật / tắt nó.
+
+| Đo 2026-11-10, RTX 4060 Laptop | |
+|---|---|
+| Một câu trả lời | 0,25–0,63 s (Gemini lúc quá tải: 2–20 s, có lúc lỗi hẳn) |
+| Từ lúc hỏi tới khi điện thoại nhận câu trả lời | 0,39–0,67 s |
+| Bộ nhớ GPU | ~2,2 GB, chạy cùng phần dẫn đường trên 8 GB |
+| Dẫn đường khi đang hỏi liên tục | mỗi khung 115 → 186 ms, hết hỏi thì về như cũ |
+
+Đã thử model nhỏ hơn: SmolVLM2-256M ra chữ vô nghĩa với tiếng Việt; InternVL3-1B nói được nhưng dài dòng, bỏ sót cầu
+thang và chậm hơn. Model 2B tả kém Gemini hơn (có lúc gọi nhầm người đi bộ là người đi xe máy).
+
+### Gemini (dùng khi chạy `--hoi-gemini`, và trong module quan sát)
+
 | Bước | Cách làm | Thời gian (đo 30/10, hành lang) |
 |---|---|---|
 | Nghe câu hỏi | giọng nói -> chữ (DashScope như dự án gốc; PhoWhisper chạy trên máy cũng chép đúng, 0,16 s) | |
@@ -145,6 +166,13 @@ OpenAIglasses_for_Navigation/
 loi_do_sau/
   ket_hop_3_model.py      lõi của module 1: độ sâu + nhận diện vật + theo dõi vật + bộ nói (Speaker)
   giong/, tao_giong.py    các mảnh giọng tiếng Việt (.wav) kính ghép thành câu khi tránh vật cản, và script tạo lại
+  gia_lap_kinh.py         làm ảnh điện thoại giống camera kính rẻ (nhiễu, mờ, rơi khung)
+  truc_tiep/              máy chủ cho app: iPhone gửi hình -> dẫn đường + nút Hỏi -> câu nói + WAV về iPhone
+    chay.py               bật máy chủ, đường hầm / nối thẳng qua WiFi, mã QR, tự bật model nhìn trên máy
+    may_chu.py            WebSocket nhận khung, chạy dẫn đường, gửi câu nói; nút Hỏi; nhật ký phiên
+    hoi_dap.py            nút Hỏi: HoiTrenMay (mặc định) / HoiGemini
+    chung_chi.py          chứng chỉ https nội bộ để iPhone nối thẳng laptop (chỉ ký được cho IP nội bộ)
+    static/               trang app (bản do máy tính phục vụ; app/ là bản đưa lên GitHub Pages)
 ```
 
 ## Cài và chạy test
@@ -170,11 +198,39 @@ model phân đoạn vạch từ ModelScope `archifancy/AIGlasses_for_navigation`
 
 Không có khóa API nào trong mã; nếu dùng phần chat của dự án gốc, đặt khóa trong `.env` (đã nằm trong `.gitignore`).
 
+## Chạy máy chủ cho app (iPhone làm kính)
+
+```bash
+# 1. Model nhìn trên máy cho nút Hỏi (một lần; ~1,6 GB). Không có thì nút Hỏi dùng Gemini nếu có GEMINI_API_KEY.
+mkdir -p ~/.local/opt ~/.local/share/glassai/qwen3vl
+#    llama.cpp bản Vulkan cho Linux: https://github.com/ggml-org/llama.cpp/releases (llama-bXXXX-bin-ubuntu-vulkan-x64)
+#    -> giải nén vào ~/.local/opt/ ; đặt AIGLASS_LLAMA_SERVER nếu đường dẫn khác mặc định trong chay.py
+#    Qwen3VL-2B-Instruct-Q4_K_M.gguf + mmproj-Qwen3VL-2B-Instruct-Q8_0.gguf từ Qwen/Qwen3-VL-2B-Instruct-GGUF
+#    -> ~/.local/share/glassai/qwen3vl/ (hoặc AIGLASS_QWEN_VL_DIR)
+# 2. Bật máy chủ (từ thư mục gốc repo). iPhone và máy tính cùng WiFi, nối thẳng không qua Internet:
+python -m loi_do_sau.truc_tiep.chay --noi-thang --trang-may-tinh
+#    lần đầu: quét mã QR cài chứng chỉ trên iPhone (Cài đặt -> Cài đặt chung -> Giới thiệu -> Cài đặt tin cậy chứng
+#    nhận -> bật), rồi quét mã QR mở app. Không chung WiFi: bỏ --noi-thang (đi qua đường hầm Cloudflare, chậm hơn).
+#    Linux có tường lửa ufw: mở cổng 8765-8766 cho mạng nội bộ.
+```
+
+| Biến / cờ | Ý nghĩa |
+|---|---|
+| `--hoi-gemini` | nút Hỏi dùng Gemini thay cho model trên máy |
+| `AIGLASS_MAY_NHIN=0` | không bật model trên máy |
+| `AIGLASS_MAY_NHIN_GPU` | GPU cho llama-server (mặc định tự chọn GPU NVIDIA; GPU tích hợp lấy RAM chung, dễ hết RAM) |
+
+Test máy chủ: `python -m pytest loi_do_sau/truc_tiep -q` (test cần video mẫu / giọng đọc / bản gốc tự bỏ qua khi thiếu).
+
 ## Giấy phép
 
 Mã ở đây theo **MIT** (xem `LICENSE`; phần lấy từ dự án gốc giữ bản quyền AI-FanGe).
 
 ## Giới hạn đã biết
+
+- Trong lúc giữ nút Hỏi, kính không báo nguy hiểm (để micro nghe rõ câu hỏi): chỉ hỏi khi đang đứng yên.
+- Model nhìn trên máy (2B) tả kém Gemini và có lúc sai; câu trả lời chỉ để tham khảo, không thay gậy.
+- Câu trả lời do giọng tiếng Việt có sẵn của điện thoại đọc (iOS: tắt công tắc im lặng để nghe).
 
 - Ước lượng "xe đang tới" chỉ dựa vào độ sâu từ một camera: khi người quay đầu nhanh, xe đỗ bên cạnh có thể bị báo nhầm
   là đang tới. Cần cảm biến chuyển động (IMU) trên kính để bù.
