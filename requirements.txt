@@ -11,7 +11,9 @@ openai>=1.50          # quan_sat.py gọi Gemini qua cổng tương thích OpenA
 python-dotenv>=1
 fastapi>=0.110
 uvicorn>=0.30
-pygame>=2.5
+qrcode>=7              # máy chủ app (loi_do_sau/truc_tiep/chay.py): in mã QR
+cryptography>=42       # máy chủ app (chung_chi.py): chứng chỉ https nội bộ để iPhone nối thẳng
+ultralytics>=8.3       # model YOLO phân đoạn vạch / vật cản — giấy phép AGPL-3.0, phải thay trước khi bán
 pytest>=8
 # chỉ để tạo lại mảnh giọng (tao_giong.py)
 edge-tts>=6
