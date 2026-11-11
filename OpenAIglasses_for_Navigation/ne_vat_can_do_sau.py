@@ -41,6 +41,28 @@ import ket_hop_3_model as K  # noqa: E402
 K.H_CAM = float(os.getenv("AIGLASS_NE_HCAM", K.H_CAM))  # chiều cao camera kính (m), lấy từ hieu_chinh_khoang_cach.py
 
 _GHEP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice", "vi", "_ne_ghep")
+CAO_XU_LY = 360
+RONG_MANG = 640
+F_DIEN_THOAI = (640 / 2) / np.tan(np.radians(K.HFOV_DEG / 2))   # tiêu cự camera điện thoại ở cỡ xử lý 640x360
+
+
+def co_va_tieu_cu(cao_goc, rong_goc, hfov=None):
+    """(bề rộng xử lý, tiêu cự) cho ảnh vào. Thu nhỏ phải giữ đúng tỉ lệ ảnh: mọi công thức dùng MỘT tiêu cự cho cả hai
+    trục, ép ảnh 4:3 về 640x360 làm lệch ngang đọc lớn hơn thật 1,33 lần (lỗi thật 2026-11-06). Cao luôn 360 nên ảnh 4:3
+    rộng 480: đúng mật độ điểm ảnh của video điện thoại mà các ngưỡng đã chỉnh theo.
+    hfov: góc nhìn ngang đã khai (AIGLASS_HFOV). Chưa khai: coi là phần cắt từ camera điện thoại, cùng tiêu cự đó."""
+    rong = int(round(CAO_XU_LY * rong_goc / cao_goc))
+    return rong, ((rong / 2) / np.tan(np.radians(hfov / 2)) if hfov else F_DIEN_THOAI)
+
+
+def anh_cho_mang(frame, img):
+    """Ảnh đưa vào D-FINE và UperNet: rộng 640, đúng tỉ lệ. Hai mạng tự phóng về ảnh vuông nên thu về rộng 480 trước đó chỉ
+    mất chi tiết: đo 3 video dev, D-FINE thấy ít hơn 9,6% vật; ảnh gốc 640x480 khớp ảnh đủ phân giải 85% so với 74% khi
+    ép 640x360 và 68% khi thu về 480. img: ảnh xử lý hình học, đã đủ rộng thì dùng luôn (đường video điện thoại không đổi)."""
+    if img.shape[1] >= RONG_MANG:
+        return img
+    return cv2.resize(frame, (RONG_MANG, int(round(RONG_MANG * frame.shape[0] / frame.shape[1]))),
+                      interpolation=cv2.INTER_AREA)
 
 
 def _dang_ky_cau_noi(text, pcm16):
@@ -147,7 +169,7 @@ def dang_toi(o):
 class NeVatCanDoSau:
     """Gọi step(ảnh BGR) cho mỗi khung (nên ~10 khung/giây); trả về câu cần nói (str) hoặc None.
     Câu trả về đã được đăng ký vào AUDIO_MAP, chỉ cần đưa vào luồng giọng nói vật cản (ưu tiên 100)."""
-    W, H = 640, 360
+    W, H = 640, CAO_XU_LY     # W theo tỉ lệ ảnh vào, cập nhật mỗi khung (co_va_tieu_cu)
 
     def __init__(self, detector=None, lenh_xa=3.0, persist=3):
         from transformers import AutoModelForDepthEstimation
@@ -159,7 +181,8 @@ class NeVatCanDoSau:
         self.det = K.DFineDet(detector or os.getenv("AIGLASS_NE_DETECTOR", "ustc-community/dfine-small-obj2coco"))
         self.mean = torch.tensor([0.485, 0.456, 0.406], device=self.dev).view(1, 3, 1, 1)
         self.std = torch.tensor([0.229, 0.224, 0.225], device=self.dev).view(1, 3, 1, 1)
-        self.F = (self.W / 2) / np.tan(np.radians(K.HFOV_DEG / 2))
+        self.hfov = float(os.getenv("AIGLASS_HFOV", "0")) or None
+        self.W, self.F = co_va_tieu_cu(self.H, self.W, self.hfov)
         self.lenh_xa = lenh_xa
         self.streak = collections.deque(maxlen=persist)
         self.stairs_streak = collections.deque(maxlen=3)
@@ -195,10 +218,12 @@ class NeVatCanDoSau:
         chi_bao(o) -> bool: chỉ nói về vật được chấp nhận (module vạch: vật cạnh vạch im, vật chắn do bộ điều khiển
         vật chắn nói); self.cand vẫn giữ đủ mọi vật."""
         t = (time.time() - self.t0) if t is None else t
+        self.W, self.F = co_va_tieu_cu(frame_bgr.shape[0], frame_bgr.shape[1], self.hfov)
         W, H, F = self.W, self.H, self.F
         img = cv2.resize(frame_bgr, (W, H), interpolation=cv2.INTER_AREA)
+        anh_mang = anh_cho_mang(frame_bgr, img)
         D = self._do_sau(img)
-        yo = self.det.detect(img)
+        yo = self.det.detect(anh_mang, co=(H, W))
         anh_xau = K.KinhMu.anh_xau(img)          # tối / camera bị che: không dùng khung này để báo gì
         ground = None if anh_xau else K.fit_ground(D, H, W)
         cau_mu = self.km.update(t, anh_xau or ground is None)
@@ -217,7 +242,7 @@ class NeVatCanDoSau:
         self.streak.append(bool(obs))
         cand = obs if len(self.streak) == self.streak.maxlen and all(self.streak) else []
         dyn = K.yoloe_obstacles(yo, geo, F, H, W) if geo else []
-        self.tracker.update(t, dyn, W)
+        self.tracker.update(t, dyn, W, F)
         song = {tr['id'] for tr in self.tracker.tracks}
         self.vet_co = {k: v for k, v in getattr(self, 'vet_co', {}).items() if k in song}   # (t, z, cao ảnh, chạm mép)
         vet = {tr['id']: tr['hist'] for tr in self.tracker.tracks}
@@ -240,7 +265,7 @@ class NeVatCanDoSau:
             cand = [c for c in cand if (c['near'] & o['mask']).sum() < 0.3 * max(1, c['near'].sum())] + [o]
         dang_o_duong = False
         if geo and self.dvh is not None:
-            road, side = self.dvh(img)
+            road, side = self.dvh(anh_mang, co=(H, W))
             geo['road'] = road
             dang_o_duong, mep = K.road_state(road, side, geo, H, W)
             self.curb_streak.append(mep is not None)

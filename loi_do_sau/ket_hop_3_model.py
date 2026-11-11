@@ -94,8 +94,9 @@ class DFineDet:
         self.model = DFineForObjectDetection.from_pretrained(repo).to(DEV).eval().half()
         self.nguong = nguong
 
-    def detect(self, img):
-        H, W = img.shape[:2]
+    def detect(self, img, co=None):
+        """co=(cao, rộng): trả toạ độ và mặt nạ theo cỡ đó thay vì cỡ ảnh đưa vào."""
+        H, W = co or img.shape[:2]
         inp = self.proc(images=cv2.cvtColor(img, cv2.COLOR_BGR2RGB), return_tensors='pt').to(DEV)
         inp['pixel_values'] = inp['pixel_values'].half()
         with torch.inference_mode():
@@ -412,8 +413,9 @@ class DuongVaHe:
         self.road = [k for k, v in lab.items() if v == 'road']
         self.side = [k for k, v in lab.items() if v == 'sidewalk']
 
-    def __call__(self, img):
-        H, W = img.shape[:2]
+    def __call__(self, img, co=None):
+        """co=(cao, rộng): trả mặt nạ theo cỡ đó thay vì cỡ ảnh đưa vào."""
+        H, W = co or img.shape[:2]
         inp = self.proc(images=cv2.cvtColor(img, cv2.COLOR_BGR2RGB), return_tensors='pt').to(DEV)
         inp['pixel_values'] = inp['pixel_values'].half()
         with torch.inference_mode():
@@ -558,7 +560,7 @@ class Tracker:
         self.tracks = []
         self.next_id = 0
 
-    def update(self, t, objs, W):
+    def update(self, t, objs, W, F):
         for tr in self.tracks:
             tr['matched'] = False
         for o in objs:
@@ -576,7 +578,7 @@ class Tracker:
                 self.tracks.append(best)
             best.update(cx=o['cx'], z=o['dist'], seen=t, matched=True)
             best['hist'].append((t, o['dist']))
-            best.setdefault('hx', collections.deque(maxlen=12)).append((t, (o['cx'] - W / 2) * o['dist'] / (W / 2 / np.tan(np.radians(HFOV_DEG / 2)))))
+            best.setdefault('hx', collections.deque(maxlen=12)).append((t, (o['cx'] - W / 2) * o['dist'] / F))
             best['n'] += 1
             h = best['hist']
             # [Bản 6] cần >= 5 lần thấy trong >= 0,5 s; lấy trung vị độ dốc từng cặp (bền với khung đo sai)
@@ -895,7 +897,7 @@ def main():
         t_vid = i / vfps
         cand = obs if len(streak) == args.persist and all(streak) else []
         dyn_all = yoloe_obstacles(yo, geo, F, H, W) if geo else []
-        tracker.update(t_vid, dyn_all, W)
+        tracker.update(t_vid, dyn_all, W, F)
         for o in dyn_all:
             # [Bản 12] xe máy đi thẳng tới bị người lái che -> chỉ thấy "người"; người đi bộ ngược chiều
             # tiến lại tối đa ~2,6 m/s, nhanh hơn hẳn thì gần như chắc là người đi xe
