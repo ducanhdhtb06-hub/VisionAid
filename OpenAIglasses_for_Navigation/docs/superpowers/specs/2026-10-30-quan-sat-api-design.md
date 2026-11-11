@@ -1,5 +1,9 @@
 # Quan sát nhờ API (2026-10-30)
 
+> **Đã thay (2026-11-11):** Gemini (nhìn + đọc), Qwen-Omni và patch nối vào `app_main.py` đã bị gỡ. Module quan sát chỉ
+> dùng mô hình nhìn chạy trên máy (Qwen3-VL-2B qua llama.cpp), nút Hỏi chỉ có trên app điện thoại, điện thoại tự đọc câu
+> trả lời. Tài liệu dưới đây giữ lại làm lịch sử thiết kế và số đo so sánh.
+
 **Mục đích:** người dùng hỏi bằng giọng nói ("Phía trước có gì?", "Mô tả xung quanh"), kính gửi khung hình mới nhất
 kèm câu hỏi lên AI thị giác và đọc câu trả lời. Giống chế độ trò chuyện có sẵn, nhưng đổi được nhà cung cấp.
 

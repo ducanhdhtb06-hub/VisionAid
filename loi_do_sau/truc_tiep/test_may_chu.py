@@ -396,9 +396,9 @@ def test_ma_qr_mo_app(tmp_path):
     assert 'Thử kính' in c.get('/thu').text
 
 
-# ---------- nút "Hỏi" của app: câu hỏi chữ + khung mới nhất -> Gemini -> câu trả lời + WAV ----------
+# ---------- nút "Hỏi" của app: câu hỏi chữ + khung mới nhất -> model trên máy -> câu trả lời (+ WAV nếu có) ----------
 class HoiGia:
-    """Thay Gemini: ghi lại (ảnh, câu hỏi), chờ `cham` giây rồi trả lời; ném lỗi nếu `loi`."""
+    """Thay model trả lời: ghi lại (ảnh, câu hỏi), chờ `cham` giây rồi trả lời; ném lỗi nếu `loi`."""
     def __init__(self, cham=0.0, loi=None, khong_tieng=False):
         self.goi, self.cham, self.loi, self.nong, self.khong_tieng = [], cham, loi, 0, khong_tieng
 
@@ -452,7 +452,7 @@ def test_hoi_gui_khung_moi_nhat_va_tra_loi_kem_wav(tmp_path):
 
 
 def test_tra_loi_khong_co_tieng_thi_gui_chu_de_dien_thoai_tu_doc(tmp_path):
-    # Gemini đọc lỗi (quá tải / mất mạng) mà đã có câu trả lời (vd. model trên máy): đừng báo "Không hỏi được"
+    # model trên máy chỉ trả chữ, không có WAV: gửi chữ để điện thoại tự đọc, đừng báo "Không hỏi được"
     hoi = HoiGia(khong_tieng=True)
     with TestClient(tao_app(EngineGia(noi_o=99), MA, str(tmp_path), hoi=hoi)) as c, \
             c.websocket_connect(f'/ws?k={MA}') as ws:

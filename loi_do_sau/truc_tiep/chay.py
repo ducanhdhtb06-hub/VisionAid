@@ -108,7 +108,7 @@ def mo_noi_thang(ma, them, cong, pages=PAGES):
     return dict(ssl_certfile=crt, ssl_keyfile=key)
 
 
-# Model nhìn TRÊN MÁY cho nút Hỏi (dự phòng cuối khi Gemini lỗi / mất mạng, quan_sat.MAY_NHIN_URL): llama.cpp
+# Model nhìn TRÊN MÁY cho nút Hỏi (mô hình duy nhất, quan_sat.MAY_NHIN_URL): llama.cpp
 # llama-server bản Vulkan (MIT) + Qwen3-VL-2B-Instruct GGUF Q4_K_M (Apache-2.0), tải 2026-11-10, đã kiểm SHA-256.
 LLAMA_SERVER = os.getenv('AIGLASS_LLAMA_SERVER',
                          os.path.expanduser('~/.local/opt/llama.cpp-b12243/llama-b12243/llama-server'))
@@ -138,14 +138,13 @@ def _cong_dang_mo(cong: int) -> bool:
 
 def bat_may_nhin(thu_muc: str):
     """Bật llama-server cho nút Hỏi. Trả (Popen hoặc None, model trên máy có dùng được không).
-    AIGLASS_MAY_NHIN=0: tắt. Đang chạy sẵn (cổng mở): dùng lại, không bật bản thứ hai. Thiếu tệp: bỏ qua, chỉ Gemini.
+    AIGLASS_MAY_NHIN=0: tắt. Đang chạy sẵn (cổng mở): dùng lại, không bật bản thứ hai. Thiếu tệp: bỏ qua, nút Hỏi tắt.
     Bật SAU khi model dẫn đường đã nạp: llama lấy phần bộ nhớ GPU còn lại (~2,2 GB), dẫn đường không thiếu chỗ."""
     if os.getenv('AIGLASS_MAY_NHIN', '1') == '0':
         return None, False
     model, mmproj = os.path.join(QWEN_VL_DIR, QWEN_VL_MODEL), os.path.join(QWEN_VL_DIR, QWEN_VL_MMPROJ)
     if not all(os.path.exists(f) for f in (LLAMA_SERVER, model, mmproj)):
-        print(f'Chưa có model trên máy (llama-server + Qwen3-VL-2B ở {QWEN_VL_DIR}): nút Hỏi chỉ dùng Gemini.',
-              flush=True)
+        print(f'Chưa có model trên máy (llama-server + Qwen3-VL-2B ở {QWEN_VL_DIR}): nút Hỏi tắt.', flush=True)
         return None, False
     if _cong_dang_mo(CONG_MAY_NHIN):
         print(f'Model trên máy: dùng llama-server đang chạy ở cổng {CONG_MAY_NHIN}.', flush=True)
@@ -191,9 +190,6 @@ def main():
                     help='--cau-noi: chạy bản GỐC ĐÃ VIỆT HÓA (OpenAIglasses_goc_viet: logic y hệt gốc, chữ tiếng Việt)')
     ap.add_argument('--goc-trung-quoc', action='store_true',
                     help='--cau-noi: chạy CODE GỐC Trung Quốc y hệt (bak-zh) nói tiếng Việt, để so với bản mới')
-    ap.add_argument('--hoi-gemini', action='store_true',
-                    help='nút Hỏi dùng Gemini (ảnh gửi tới Google) thay vì model nhìn trên máy; mặc định: có model '
-                         'trên máy thì chỉ dùng nó (nhanh, ảnh không rời máy), không có thì dùng Gemini')
     ap.add_argument('--trang-may-tinh', action='store_true',
                     help='mã QR mở trang do máy tính phục vụ thay vì app VisionAid trên GitHub Pages')
     args = ap.parse_args()
@@ -226,22 +222,14 @@ def main():
         engine = EngineThat(lam_xau)
     from khoi_dong_dan_duong import dong_bang_bo_nho  # pyright: ignore[reportMissingImports]
     dong_bang_bo_nho()
-    from loi_do_sau.truc_tiep.hoi_dap import HoiGemini, HoiTrenMay, co_khoa
+    from loi_do_sau.truc_tiep.hoi_dap import HoiTrenMay
     hoi = None
     may_nhin, co_may_nhin = bat_may_nhin(thu_muc)
-    if co_may_nhin and not args.hoi_gemini:
+    if co_may_nhin:
         hoi = HoiTrenMay()
-        print('Nút "Hỏi": bật, chỉ model nhìn trên máy (Qwen3-VL-2B), điện thoại tự đọc. Ảnh không rời máy tính. '
-              '--hoi-gemini để dùng Gemini.', flush=True)
-    elif co_khoa():
-        hoi = HoiGemini()
-        print('Nút "Hỏi": bật (Gemini' + (', dự phòng cuối: model trên máy' if co_may_nhin else '') +
-              '). Ảnh camera và câu hỏi được gửi tới Google.', flush=True)
-    elif co_may_nhin:
-        hoi = HoiGemini()
-        print('Nút "Hỏi": bật, chỉ model trên máy (chưa có GEMINI_API_KEY). Ảnh không rời máy tính.', flush=True)
+        print('Nút "Hỏi": bật, model nhìn trên máy (Qwen3-VL-2B), điện thoại tự đọc. Ảnh không rời máy tính.', flush=True)
     else:
-        print('Nút "Hỏi": TẮT — chưa có GEMINI_API_KEY trong OpenAIglasses_for_Navigation/.env', flush=True)
+        print('Nút "Hỏi": TẮT — chưa có model nhìn trên máy (xem README: llama-server + Qwen3-VL-2B).', flush=True)
     app = tao_app(engine, ma, thu_muc, kich_thuoc, luong=luong, hoi=hoi)
     ham = thuc = None
     ket_noi: dict = dict(host='127.0.0.1')

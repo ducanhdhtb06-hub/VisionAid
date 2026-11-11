@@ -4,8 +4,9 @@
 
 1. **Chỉ đường theo vạch** (gạch dẫn đường / vạch xúc giác): camera trên kính nhìn vạch và vật cản phía trước, nói hướng
    đi bằng tiếng Việt.
-2. **Quan sát nhờ API** (`quan_sat.py`): người dùng hỏi bằng giọng nói ("Phía trước có gì?", "Chữ ở biển xanh là gì?"), kính
-   gửi khung hình mới nhất kèm câu hỏi lên AI thị giác (Gemini hoặc Qwen-Omni) rồi đọc câu trả lời.
+2. **Quan sát môi trường** (`quan_sat.py`): người dùng hỏi bằng giọng nói ("Phía trước có gì?", "Bên phải có gì?"), máy
+   tính đưa khung hình mới nhất kèm câu hỏi cho **mô hình nhìn chạy ngay trên máy** (Qwen3-VL-2B), điện thoại đọc câu
+   trả lời. Ảnh không gửi ra dịch vụ bên ngoài.
 
 ## Tác giả
 
@@ -17,9 +18,9 @@ nền để chạy thử nhanh; các thành phần lấy từ dự án gốc s�
 - **Module chỉ đường theo vạch:** đo hai mép vạch và độ lệch, luật nói "dịch trái/phải", bộ điều khiển vật chắn trên vạch
   (chọn bên đi vòng, "Đã về vạch", nhớ xe chắn khi xe che mép vạch), né vật cản bằng độ sâu, cảnh báo xe đang tới và
   lọc báo nhầm, ưu tiên câu gấp.
-- **Module quan sát nhờ API:** hỏi bằng giọng nói, nhìn ảnh bằng Gemini, đọc phát dần, chuyển khóa dự phòng, công cụ thử
+- **Module quan sát môi trường:** nút Hỏi trên app, mô hình nhìn chạy trên máy (llama.cpp + Qwen3-VL-2B), công cụ thử
   trên video (`tools/thu_quan_sat.py`).
-- **Kính ESP32 ảo** để phát lại video như camera kính thật, bộ quét câu mâu thuẫn, bộ test (hơn 240 test), video demo.
+- **Kính ESP32 ảo** để phát lại video như camera kính thật, bộ quét câu mâu thuẫn, bộ test (hơn 300 test), video demo.
 
 **Phần lấy từ dự án gốc:** luồng dẫn đường (`workflow_blindpath.py`), phát âm thanh (`audio_*.py`), nhận diện vạch qua đường
 (`crosswalk_awareness.py`) và khung ứng dụng.
@@ -31,9 +32,9 @@ nền để chạy thử nhanh; các thành phần lấy từ dự án gốc s�
 
 **Video đầy đủ (3 phút 33 giây, có tiếng): [xem / tải tại mục Releases](https://github.com/ducanhdhtb06-hub/VisionAid/releases/tag/demo-v0.1)**
 
-| Module 1: chỉ đường theo vạch | Module 2: quan sát nhờ API |
+| Module 1: chỉ đường theo vạch | Module 2: quan sát môi trường |
 |---|---|
-| ![chỉ đường theo vạch](docs/anh/demo_chi_duong.gif) | ![quan sát nhờ API](docs/anh/demo_quan_sat.gif) |
+| ![chỉ đường theo vạch](docs/anh/demo_chi_duong.gif) | ![quan sát môi trường](docs/anh/demo_quan_sat.gif) |
 
 | Xe đỗ lấn vạch, kính bảo đi vòng | Xe chạy tới, kính bảo dừng |
 |---|---|
@@ -44,6 +45,8 @@ nền để chạy thử nhanh; các thành phần lấy từ dự án gốc s�
 | ![hành lang](docs/anh/quan_sat_hanh_lang.jpg) | ![biển xanh](docs/anh/quan_sat_bien_xanh.jpg) |
 
 Mọi câu nói và hình vẽ trong video là đầu ra thật của hệ thống trên video quay bằng điện thoại, không dựng giả.
+Phần quan sát trong video và ảnh demo được quay ngày 30/10, khi module 2 còn dùng Gemini; từ 11/11 module 2 chỉ dùng
+mô hình nhìn chạy trên máy (Qwen3-VL-2B), câu trả lời ngắn hơn và kém chi tiết hơn.
 
 ## App: điện thoại đóng vai kính
 
@@ -60,8 +63,7 @@ hình.
   có gì?") rồi thả tay. Điện thoại tự chuyển giọng nói thành chữ; máy tính hỏi **model nhìn chạy ngay trên máy**
   (Qwen3-VL-2B) với hình camera lúc đó, điện thoại đọc câu trả lời — **dưới 1 giây**, ảnh **không rời máy tính**.
   Trong lúc giữ nút, kính **im** (tiếng kính lọt vào micro làm câu hỏi bị nghe sai), kể cả cảnh báo: chỉ hỏi khi đang
-  đứng yên. Thả tay xong, "Dừng lại" vẫn được nói trước, kể cả khi đang trả lời. Muốn câu trả lời kỹ hơn: chạy máy chủ
-  với `--hoi-gemini` (ảnh gửi tới Google, chậm hơn).
+  đứng yên. Thả tay xong, "Dừng lại" vẫn được nói trước, kể cả khi đang trả lời.
 - App cần **máy tính chạy AI** đang bật: máy tính in một mã QR, quét mã đó để app biết gửi hình tới đâu. Mở link trần
   không quét mã thì xem được giao diện và hướng dẫn, nhưng chưa dẫn đường được.
 - Mã nguồn app: [`app/`](app/) (HTML + JavaScript, không cần cài đặt gì).
@@ -87,7 +89,7 @@ Các sơ đồ dưới đây mô tả hệ thống đầy đủ. Repo này chứ
 
 **Chi tiết từng module**
 
-| Module 1: chỉ đường theo vạch | Module 2: quan sát nhờ API |
+| Module 1: chỉ đường theo vạch | Module 2: quan sát môi trường |
 |---|---|
 | ![module 1](docs/anh/module1_chi_duong.png) | ![module 2](docs/anh/module2_quan_sat.png) |
 
@@ -104,48 +106,36 @@ Các sơ đồ dưới đây mô tả hệ thống đầy đủ. Repo này chứ
 Nguyên tắc: **một giọng nói, ít lời** — khi đang theo vạch chỉ quan tâm vật trong vùng vạch (vật cạnh vạch thì im),
 không đọc số mét, không bao giờ bảo đi về phía lòng đường hay về phía xe đang lao tới; 5 loại nguy hiểm luôn báo.
 
-## Module quan sát nhờ API
+## Module quan sát môi trường
 
-### Model nhìn chạy trên máy (mặc định cho nút Hỏi của app)
-
-[llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` (MIT) chạy **Qwen3-VL-2B-Instruct** bản GGUF Q4_K_M
-(Apache-2.0, [Qwen/Qwen3-VL-2B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF)) trên GPU qua
-Vulkan, cổng tương thích OpenAI `http://127.0.0.1:8090/v1`. Máy chủ của app (`chay.py`) tự bật / tắt nó.
+Module 2 dùng **một mô hình duy nhất**, chạy ngay trên máy tính: [llama.cpp](https://github.com/ggml-org/llama.cpp)
+`llama-server` (MIT) chạy **Qwen3-VL-2B-Instruct** bản GGUF Q4_K_M (Apache-2.0,
+[Qwen/Qwen3-VL-2B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF)) trên GPU qua Vulkan, cổng tương
+thích OpenAI `http://127.0.0.1:8090/v1` (`AIGLASS_MAY_NHIN_URL`). Máy chủ của app (`chay.py`) tự bật / tắt nó. Không cần
+khóa API, không trả phí theo lượt hỏi, ảnh camera không rời máy tính. Câu trả lời là chữ, điện thoại tự đọc bằng giọng
+tiếng Việt có sẵn. (Đến 10/11 module này còn dùng Gemini; đã gỡ ngày 11/11.)
 
 | Đo 2026-11-10, RTX 4060 Laptop | |
 |---|---|
-| Một câu trả lời | 0,25–0,63 s (Gemini lúc quá tải: 2–20 s, có lúc lỗi hẳn) |
+| Một câu trả lời | 0,25–0,63 s |
 | Từ lúc hỏi tới khi điện thoại nhận câu trả lời | 0,39–0,67 s |
 | Bộ nhớ GPU | ~2,2 GB, chạy cùng phần dẫn đường trên 8 GB |
 | Dẫn đường khi đang hỏi liên tục | mỗi khung 115 → 186 ms, hết hỏi thì về như cũ |
 
 Đã thử model nhỏ hơn: SmolVLM2-256M ra chữ vô nghĩa với tiếng Việt; InternVL3-1B nói được nhưng dài dòng, bỏ sót cầu
-thang và chậm hơn. Model 2B tả kém Gemini hơn (có lúc gọi nhầm người đi bộ là người đi xe máy).
+thang và chậm hơn. Model 2B có lúc gọi nhầm (người đi bộ thành người đi xe máy).
 
-### Gemini (dùng khi chạy `--hoi-gemini`, và trong module quan sát)
-
-| Bước | Cách làm | Thời gian (đo 30/10, hành lang) |
-|---|---|---|
-| Nghe câu hỏi | giọng nói -> chữ (DashScope như dự án gốc; PhoWhisper chạy trên máy cũng chép đúng, 0,16 s) | |
-| Nhìn ảnh | `gemini-3.1-flash-lite` qua cổng tương thích OpenAI, trả lời tối đa hai câu, nói bậc thềm / vật chắn trước | 1,8 s |
-| Đọc câu trả lời | Gemini TTS phát dần (tiếng đầu ~1 s), "tít" ngay khi nhận câu hỏi | tổng ~2,8 s từ lúc hỏi tới tiếng đầu |
-
-Chọn nhà cung cấp bằng biến môi trường (`.env`, không commit): `GEMINI_API_KEY` (thêm `GEMINI_API_KEY_2` làm khóa dự phòng: khóa nào hết lượt thì tự chuyển sang khóa kia), `AIGLASS_QUAN_SAT_API=gemini|qwen`,
-`AIGLASS_GEMINI_MODEL`, `AIGLASS_GEMINI_TTS_MODEL`, `AIGLASS_GEMINI_GIONG`. Thử không cần kính:
+Thử trên ảnh / video không cần kính (cần llama-server đang chạy, xem mục chạy máy chủ app):
 
 ```bash
-python tools/thu_quan_sat.py video.MOV --xuat ket_qua.mp4   # một lệnh: nghe câu hỏi, hỏi AI, xuất video có phụ đề + tiếng kính trả lời
-python tools/thu_quan_sat.py video.MOV --doc          # tự nghe câu hỏi trong video, hỏi AI, tạo tiếng đọc (.wav)
+python tools/thu_quan_sat.py video.MOV --xuat ket_qua.mp4   # nghe câu hỏi trong video, hỏi model, xuất video có phụ đề câu hỏi + câu trả lời
 python tools/thu_quan_sat.py video.MOV --giay 10 30 --hoi "Phía trước có gì?"   # hoặc tự đặt câu hỏi và mốc giây
 ```
 Không có `--hoi`, công cụ tìm các đoạn có người nói trong video, chép thành chữ bằng PhoWhisper (chạy trên máy, như kính
-thật nghe câu hỏi) và chỉ hỏi AI ở những câu là câu quan sát.
+thật nghe câu hỏi) và chỉ hỏi model ở những câu là câu quan sát.
 
-Nối vào `app_main.py` của dự án gốc: `git apply patches/quan_sat_app_main.patch`.
-Chi tiết, số đo từng model và giới hạn: `docs/superpowers/specs/2026-10-30-quan-sat-api-design.md`.
-
-**Lưu ý:** gói miễn phí của Gemini giới hạn rất chặt (model đọc: 10 lượt mỗi ngày); gói đăng ký Google AI Pro **không** nâng
-giới hạn của khóa API, phải bật thanh toán Cloud. Ảnh camera (có thể có người đi đường) được gửi ra máy chủ nhà cung cấp.
+Nút Hỏi hiện chỉ có trên app điện thoại (điện thoại đọc câu trả lời). Đường kính ESP32 qua `app_main.py` của dự án gốc
+chưa có nút hỏi: máy tính chưa có giọng đọc tiếng Việt chạy trên máy.
 
 ## Cấu trúc
 
@@ -154,12 +144,11 @@ OpenAIglasses_for_Navigation/
   dan_theo_vach.py        đo vạch (hai mép, độ lệch, chéo), luật nói dịch trái/phải, phân loại vật chắn/cạnh vạch (3D)
   vat_chan_vach.py        bộ điều khiển vật chắn trên vạch: chọn bên đi vòng, câu nói, "Đã về vạch", nhớ xe chắn
   ne_vat_can_do_sau.py    né vật cản bằng độ sâu (Depth Anything V2) + nhận diện (D-FINE), xe đang tới, mép vỉa hè
-  quan_sat.py             module quan sát nhờ API: chọn nhà cung cấp, gửi ảnh + câu hỏi, đọc phát dần, "tít"
+  quan_sat.py             module quan sát môi trường: ảnh + câu hỏi -> mô hình nhìn trên máy (Qwen3-VL-2B)
   uu_tien_cau.py          câu gấp ("Dừng lại", "đang tới", "chắn vạch") được chen ngang câu đang đọc
   workflow_blindpath.py   ghép tất cả vào luồng dẫn đường (BlindPathNavigator)
   audio_*.py, obstacle_detector_client.py, crosswalk_awareness.py   module hỗ trợ từ dự án gốc (để chạy được test)
   tools/thu_quan_sat.py   thử quan sát trên ảnh / video bằng API thật
-  patches/                quan_sat_app_main.patch: nối quan sát vào app_main.py của dự án gốc
   tools/esp32_ao/         "kính ESP32 ảo": phát lại video như camera kính thật (56°, mạng chậm), quét câu mâu thuẫn
   tests/                  test (pytest)
   docs/superpowers/       thiết kế (specs) và kế hoạch (plans) từng giai đoạn
@@ -170,7 +159,7 @@ loi_do_sau/
   truc_tiep/              máy chủ cho app: iPhone gửi hình -> dẫn đường + nút Hỏi -> câu nói + WAV về iPhone
     chay.py               bật máy chủ, đường hầm / nối thẳng qua WiFi, mã QR, tự bật model nhìn trên máy
     may_chu.py            WebSocket nhận khung, chạy dẫn đường, gửi câu nói; nút Hỏi; nhật ký phiên
-    hoi_dap.py            nút Hỏi: HoiTrenMay (mặc định) / HoiGemini
+    hoi_dap.py            nút Hỏi: HoiTrenMay (mô hình nhìn trên máy)
     chung_chi.py          chứng chỉ https nội bộ để iPhone nối thẳng laptop (chỉ ký được cho IP nội bộ)
     static/               trang app (bản do máy tính phục vụ; app/ là bản đưa lên GitHub Pages)
 ```
@@ -201,7 +190,7 @@ Không có khóa API nào trong mã; nếu dùng phần chat của dự án gố
 ## Chạy máy chủ cho app (iPhone làm kính)
 
 ```bash
-# 1. Model nhìn trên máy cho nút Hỏi (một lần; ~1,6 GB). Không có thì nút Hỏi dùng Gemini nếu có GEMINI_API_KEY.
+# 1. Model nhìn trên máy cho nút Hỏi (một lần; ~1,6 GB). Không có thì nút Hỏi tắt (dẫn đường vẫn chạy).
 mkdir -p ~/.local/opt ~/.local/share/glassai/qwen3vl
 #    llama.cpp bản Vulkan cho Linux: https://github.com/ggml-org/llama.cpp/releases (llama-bXXXX-bin-ubuntu-vulkan-x64)
 #    -> giải nén vào ~/.local/opt/ ; đặt AIGLASS_LLAMA_SERVER nếu đường dẫn khác mặc định trong chay.py
@@ -216,7 +205,6 @@ python -m loi_do_sau.truc_tiep.chay --noi-thang --trang-may-tinh
 
 | Biến / cờ | Ý nghĩa |
 |---|---|
-| `--hoi-gemini` | nút Hỏi dùng Gemini thay cho model trên máy |
 | `AIGLASS_MAY_NHIN=0` | không bật model trên máy |
 | `AIGLASS_MAY_NHIN_GPU` | GPU cho llama-server (mặc định tự chọn GPU NVIDIA; GPU tích hợp lấy RAM chung, dễ hết RAM) |
 
@@ -229,7 +217,7 @@ Mã ở đây theo **MIT** (xem `LICENSE`; phần lấy từ dự án gốc gi�
 ## Giới hạn đã biết
 
 - Trong lúc giữ nút Hỏi, kính không báo nguy hiểm (để micro nghe rõ câu hỏi): chỉ hỏi khi đang đứng yên.
-- Model nhìn trên máy (2B) tả kém Gemini và có lúc sai; câu trả lời chỉ để tham khảo, không thay gậy.
+- Model nhìn trên máy (2B) tả kém chi tiết và có lúc sai; câu trả lời chỉ để tham khảo, không thay gậy.
 - Câu trả lời do giọng tiếng Việt có sẵn của điện thoại đọc (iOS: tắt công tắc im lặng để nghe).
 
 - Ước lượng "xe đang tới" chỉ dựa vào độ sâu từ một camera: khi người quay đầu nhanh, xe đỗ bên cạnh có thể bị báo nhầm

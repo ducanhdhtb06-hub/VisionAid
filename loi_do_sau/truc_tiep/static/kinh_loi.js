@@ -100,7 +100,7 @@ function noiTaiCho(chu) {
   } catch (e) {}
 }
 
-// Câu trả lời nút Hỏi mà Gemini không đọc được (quá tải / mất mạng; câu có thể từ model trên máy tính): điện thoại tự
+// Câu trả lời nút Hỏi (chữ, từ model nhìn trên máy tính): điện thoại tự
 // đọc. Vẫn một người nói: câu dẫn đường thường chờ đọc xong; "Dừng lại" và báo động cắt ngang.
 let dangNoiTaiCho = false, luotTaiCho = 0;
 function catTaiCho() {
@@ -165,7 +165,7 @@ function docTraLoiTaiCho(chu) {
   } catch (e) { dangNoiTaiCho = false; baoTaiCho('loi', { chi_tiet: String(e) }); }
 }
 
-// Nút Hỏi: gửi câu hỏi (chữ) lên máy tính; máy tính ghép với khung mới nhất, hỏi Gemini, trả câu + WAV
+// Nút Hỏi: gửi câu hỏi (chữ) lên máy tính; máy tính ghép với khung mới nhất, hỏi model trên máy, trả câu
 function guiCauHoi(cau) {
   cau = (cau || '').trim();
   let loi = '';
@@ -185,7 +185,7 @@ async function nhanWav(buf) {
   const j = jsonCho; jsonCho = null;
   if (!j) return;
   const tre = Date.now() - j.t_chup, hoi = j.hoi === 'tra_loi';
-  // câu cũ: vật có thể đã qua. Câu trả lời nút Hỏi không cũ theo nghĩa đó (Gemini mất 3–5 s là thường) -> không bỏ
+  // câu cũ: vật có thể đã qua. Câu trả lời nút Hỏi không cũ theo nghĩa đó (người hỏi đang đứng chờ) -> không bỏ
   if (tre > TRE_BO_MS && !hoi) { guiPhanHoi('bo', j.id, tre); return; }
   let audio;
   try { audio = await ac.decodeAudioData(buf); }

@@ -258,7 +258,7 @@ class Phien:
 
 def tao_app(engine: Engine, ma: str, thu_muc_phien: str, kich_thuoc=(W, H), luong=None, hoi=None) -> FastAPI:
     """kich_thuoc (rộng, cao): mọi khung được đưa về cỡ này trước khi ghi và xử lý (dẫn vạch: 640x480 như ESP32).
-    hoi: đối tượng có `async tra_loi(jpg, câu) -> (chữ, wav)` và `async lam_nong()` (hoi_dap.HoiGemini) cho nút
+    hoi: đối tượng có `async tra_loi(jpg, câu) -> (chữ, wav)` và `async lam_nong()` (hoi_dap.HoiTrenMay) cho nút
     "Hỏi" của app; None: trả lời "chế độ này chưa hỏi được"."""
     rong, cao = kich_thuoc
     # engine luôn chạy trên MỘT luồng, cùng luồng với làm nóng: lần chạy đầu trên luồng mới mất ~4,3 s ở mọi model (CUDA có
@@ -308,7 +308,7 @@ def tao_app(engine: Engine, ma: str, thu_muc_phien: str, kich_thuoc=(W, H), luon
         moi_nhat: dict[str, Any] = dict(id=None, t_chup=None, jpg=None)   # khung iPhone mới nhất, cho câu hỏi
         dang_hoi: dict[str, Any] = dict(tac_vu=None)
         if hoi is not None:
-            asyncio.create_task(hoi.lam_nong())   # lần gọi Gemini đầu chậm 4,5–9,4 s (đo 30/10): làm trước khi hỏi
+            asyncio.create_task(hoi.lam_nong())   # lần hỏi ảnh đầu của model trên máy chậm ~16 s: làm trước khi hỏi
 
         async def gui_cap(tin, wav=None):
             async with khoa_gui:
@@ -325,7 +325,7 @@ def tao_app(engine: Engine, ma: str, thu_muc_phien: str, kich_thuoc=(W, H), luon
                 ghi.update(tra_loi=cau, ms=ms)
                 if not cau:
                     raise RuntimeError('không có câu trả lời')
-                if not wav:                 # Gemini đọc lỗi: điện thoại tự đọc chữ bằng giọng tiếng Việt có sẵn
+                if not wav:                 # không có WAV (model trên máy chỉ trả chữ): điện thoại tự đọc bằng giọng có sẵn
                     ghi.update(doc_tai_cho=True)
                     await gui_cap(dict(hoi='tra_loi', doc_tai_cho=True, cau=cau, ms_xu_ly=ms))
                     return

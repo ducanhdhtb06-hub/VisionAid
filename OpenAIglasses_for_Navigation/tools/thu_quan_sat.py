@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
-"""Thử module quan sát (quan_sat.py) với API thật, không cần kính.
+"""Thử module quan sát (quan_sat.py) với mô hình nhìn chạy trên máy (Qwen3-VL-2B qua llama-server), không cần kính.
 
   python tools/thu_quan_sat.py anh.jpg
   python tools/thu_quan_sat.py video.MOV                            # tự nghe câu hỏi trong video (PhoWhisper trên máy)
   python tools/thu_quan_sat.py video.MOV --giay 98.6 --hoi "Cái gì chắn đường?"   # tự đặt câu hỏi và mốc giây
-  python tools/thu_quan_sat.py video.MOV --giay 10 20 30 --doc      # nhiều mốc, có tạo tiếng (.wav)
-  python tools/thu_quan_sat.py video.MOV --xuat ket_qua.mp4         # xuất video có phụ đề + tiếng kính trả lời
+  python tools/thu_quan_sat.py video.MOV --giay 10 20 30            # nhiều mốc
+  python tools/thu_quan_sat.py video.MOV --xuat ket_qua.mp4         # xuất video có phụ đề câu hỏi + câu trả lời
 
 Không có --hoi: công cụ tìm các đoạn có người nói trong video, chép thành chữ bằng PhoWhisper (chạy trên máy, như kính
 thật nghe câu hỏi), câu nào là câu quan sát ("phía trước có gì", "chữ này là gì"...) thì lấy khung hình ngay sau đó để hỏi.
 
-Làm nóng trước (như máy chủ lúc khởi động), in câu trả lời và thời gian (hỏi -> tiếng đầu); --doc lưu tiếng đọc vào test_out/quan_sat/ để nghe.
---xuat (tự bật --doc): ghép video gốc + phụ đề "Bạn hỏi" / "Kính nghe được" + tiếng "tít" + giọng kính trả lời. Mốc thời gian
-là số đo thật của lượt chạy: nghe xong -> chép chữ (PhoWhisper) -> nhìn ảnh -> tiếng đầu tiên.
-Cần GEMINI_API_KEY trong .env (chỉ thử nhánh Gemini; nhánh Qwen chạy qua app_main).
+Làm nóng trước (như máy chủ lúc khởi động), in câu trả lời và thời gian trả lời.
+--xuat: ghép video gốc + phụ đề "Bạn hỏi" / "Kính nghe được" + tiếng "tít" + phụ đề câu trả lời. Không tạo giọng đọc:
+trên app, điện thoại tự đọc câu trả lời bằng giọng tiếng Việt có sẵn. Mốc thời gian là số đo thật của lượt chạy:
+nghe xong -> chép chữ (PhoWhisper) -> nhìn ảnh -> có câu trả lời.
+Cần llama-server đang chạy ở AIGLASS_MAY_NHIN_URL (mặc định http://127.0.0.1:8090/v1; xem README, mục chạy máy chủ app).
 """
 import argparse
 import asyncio
@@ -27,7 +28,6 @@ import wave
 
 import cv2
 import numpy as np
-from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import quan_sat as Q  # noqa: E402
@@ -75,11 +75,11 @@ def nghe_cau_hoi(video):
 def lich_phu_de(m):
     """Mốc thời gian (giây trên video) của một lượt hỏi-đáp từ các số đo thật:
     m = {t0: bắt đầu nói (None nếu câu hỏi gõ tay), t1: nói xong / mốc khung hình, t_asr: giây chép chữ,
-         t_dau: giây từ lúc có chữ tới tiếng đầu tiên (nhìn ảnh + đọc), giay_tieng: độ dài tiếng trả lời}."""
+         t_tra_loi: giây từ lúc có chữ tới lúc có câu trả lời (model nhìn trên máy)}."""
     tit = round(m["t1"] + m["t_asr"], 2)                           # nghe xong + chép chữ xong: kêu "tít"
-    noi = round(tit + m["t_dau"], 2)                               # tiếng đầu tiên của kính
+    noi = round(tit + m["t_tra_loi"], 2)                           # có câu trả lời
     t0 = m["t0"] if m["t0"] is not None else max(m["t1"] - 1.5, 0.0)
-    return dict(tit=tit, noi=noi, het=round(noi + m["giay_tieng"], 2), hoi=(round(t0, 2), noi), nghe=(tit, noi))
+    return dict(tit=tit, noi=noi, hoi=(round(t0, 2), noi), nghe=(tit, noi))
 
 
 def _font():
@@ -87,11 +87,11 @@ def _font():
 
 
 def xuat_video(nguon, muc, ra):
-    """Ghép video gốc + phụ đề + "tít" + giọng kính trả lời -> `ra` (mp4 1280x720).
-    muc = [{hoi, chu_nghe (None nếu gõ tay), cau, pcm (PCM16 24 kHz), **lich_phu_de}]."""
+    """Ghép video gốc + phụ đề câu hỏi / câu trả lời + "tít" -> `ra` (mp4 1280x720).
+    muc = [{hoi, chu_nghe (None nếu gõ tay), cau, **lich_phu_de}]."""
     font = _font()
     dur = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", nguon]))
-    end = round(max(dur, max(m["het"] for m in muc)) + 1.2, 2)
+    end = round(max(dur, max(m["noi"] for m in muc) + 4.0) + 1.2, 2)   # câu trả lời cuối hiện ít nhất 4 s
     co_am = bool(subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", nguon],
                                 capture_output=True, text=True).stdout.strip())
     tmp = tempfile.mkdtemp(prefix="quan_sat_")
@@ -130,12 +130,11 @@ def xuat_video(nguon, muc, ra):
     ten_am = ["[a0]"]
     n = 1
     for i, m in enumerate(muc):
-        cmd += ["-i", wav(f"tit{i}.wav", Q.tieng_tit(), 8000), "-i", wav(f"tl{i}.wav", m["pcm"], 24000)]
-        for f, t, v in ((n, m["tit"], 1.5), (n + 1, m["noi"], 1.6)):
-            ms = int(t * 1000)
-            am.append(f"[{f}:a]aresample=48000,volume={v},adelay={ms}|{ms},apad,atrim=0:{end}[a{f}]")
-            ten_am.append(f"[a{f}]")
-        n += 2
+        cmd += ["-i", wav(f"tit{i}.wav", Q.tieng_tit(), 8000)]
+        ms = int(m["tit"] * 1000)
+        am.append(f"[{n}:a]aresample=48000,volume=1.5,adelay={ms}|{ms},apad,atrim=0:{end}[a{n}]")
+        ten_am.append(f"[a{n}]")
+        n += 1
     fc = f"[0:v]{','.join(vf)},format=yuv420p[v];" + ";".join(am) + f";{''.join(ten_am)}amix=inputs={len(ten_am)}:normalize=0[a]"
     cmd += ["-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-crf", "25", "-preset", "veryfast",
             "-c:a", "aac", "-ar", "48000", "-ac", "2", "-b:a", "128k", ra]
@@ -147,16 +146,11 @@ async def main():
     ap.add_argument("nguon", help="ảnh hoặc video")
     ap.add_argument("--giay", type=float, nargs="*", help="mốc giây trong video (bỏ trống nếu là ảnh)")
     ap.add_argument("--hoi", default=None, help="câu hỏi; bỏ trống = tự nghe câu hỏi trong video")
-    ap.add_argument("--doc", action="store_true", help="tạo tiếng đọc bằng Gemini TTS, lưu .wav")
-    ap.add_argument("--xuat", metavar="KET_QUA.mp4", help="xuất video có phụ đề và tiếng kính trả lời (tự bật --doc)")
+    ap.add_argument("--xuat", metavar="KET_QUA.mp4", help="xuất video có phụ đề câu hỏi và câu trả lời")
     a = ap.parse_args()
-    if a.xuat:
-        a.doc = True
-        if a.nguon.lower().endswith((".jpg", ".jpeg", ".png")):
-            raise SystemExit("--xuat cần video, không phải ảnh.")
-    load_dotenv()
-    os.makedirs("test_out/quan_sat", exist_ok=True)
-    print(f"model nhìn: {Q.GEMINI_MODEL} | model đọc: {Q.GEMINI_TTS_MODEL}")
+    if a.xuat and a.nguon.lower().endswith((".jpg", ".jpeg", ".png")):
+        raise SystemExit("--xuat cần video, không phải ảnh.")
+    print(f"model nhìn: Qwen3-VL-2B trên máy ({Q.MAY_NHIN_URL})")
     viec = [dict(g=g, hoi=a.hoi, t0=None, t1=g or 0.0, t_asr=0.0, chu_nghe=None) for g in (a.giay or [None])] if a.hoi else []
     if not a.hoi:
         for t0, t1, chu, t_asr in nghe_cau_hoi(a.nguon):
@@ -166,33 +160,21 @@ async def main():
                 viec.append(dict(g=t1 + 0.3, hoi=chu, t0=t0, t1=t1, t_asr=t_asr, chu_nghe=chu))
         if not viec:
             raise SystemExit("Không nghe thấy câu quan sát nào trong video. Dùng --hoi và --giay để tự đặt.")
-    await Q.lam_nong()
+    await Q.lam_nong_tren_may()
     muc = []
     for v in viec:
         g, hoi = v["g"], v["hoi"]
         t = time.time()
-        cau = await Q.mo_ta_gemini(anh_jpeg(a.nguon, g), hoi)
+        cau = await Q.mo_ta_tren_may(anh_jpeg(a.nguon, g), hoi)
         t_cau = time.time() - t
         nhan = os.path.basename(a.nguon) + ("" if g is None else f" @{g:g}s")
-        print(f"\n[{nhan}] {t_cau:.1f}s: {cau}")
-        if a.doc and cau:
-            pcm, t_dau = b"", None
-            async for manh in Q.doc_gemini_dan(cau):
-                t_dau = t_dau or time.time() - t
-                pcm += manh
-            ra = f"test_out/quan_sat/{os.path.splitext(os.path.basename(a.nguon))[0]}_{g or 0:g}.wav"
-            with wave.open(ra, "wb") as w:
-                w.setnchannels(1)
-                w.setsampwidth(2)
-                w.setframerate(24000)
-                w.writeframes(pcm)
-            print(f"   hỏi -> tiếng đầu {t_dau:.1f}s | {len(pcm) / 48000:.1f}s tiếng: {ra}")
-            if a.xuat and pcm:
-                muc.append({**v, "hoi_chu": hoi, "cau": cau, "pcm": pcm,
-                            **lich_phu_de(dict(t0=v["t0"], t1=v["t1"], t_asr=v["t_asr"], t_dau=t_dau, giay_tieng=len(pcm) / 48000))})
+        print(f"\n[{nhan}] {t_cau:.2f}s: {cau}")
+        if a.xuat and cau:
+            muc.append({**v, "hoi_chu": hoi, "cau": cau,
+                        **lich_phu_de(dict(t0=v["t0"], t1=v["t1"], t_asr=v["t_asr"], t_tra_loi=t_cau))})
     if a.xuat:
         if not muc:
-            raise SystemExit("Không có câu trả lời nào có tiếng để ghép video (hết lượt đọc của Gemini?).")
+            raise SystemExit("Không có câu trả lời nào để ghép video.")
         xuat_video(a.nguon, muc, a.xuat)
         print(f"\nĐã xuất video: {a.xuat}")
 

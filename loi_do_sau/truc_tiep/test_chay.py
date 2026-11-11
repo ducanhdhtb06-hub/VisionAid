@@ -311,28 +311,7 @@ def test_bat_may_nhin_da_chay_san_thi_dung_lai(monkeypatch, tmp_path):
     assert chay.bat_may_nhin(str(tmp_path)) == (None, True)
 
 
-def test_co_model_tren_may_thi_nut_hoi_chi_dung_may(monkeypatch, tmp_path):
-    from loi_do_sau.truc_tiep import hoi_dap
-    monkeypatch.setattr(hoi_dap, 'co_khoa', lambda: True)
-    ghi = _chay_noi_thang(monkeypatch, tmp_path, '--noi-thang', bat_may_nhin=lambda thu_muc: (None, True))
-    assert isinstance(ghi['hoi'], hoi_dap.HoiTrenMay)
-
-
-def test_hoi_gemini_thi_dung_gemini_du_co_model_tren_may(monkeypatch, tmp_path):
-    from loi_do_sau.truc_tiep import hoi_dap
-    monkeypatch.setattr(hoi_dap, 'co_khoa', lambda: True)
-    ghi = _chay_noi_thang(monkeypatch, tmp_path, '--noi-thang', '--hoi-gemini',
-                          bat_may_nhin=lambda thu_muc: (None, True))
-    assert type(ghi['hoi']) is hoi_dap.HoiGemini
-
-
-def test_khong_model_tren_may_thi_dung_gemini(monkeypatch, tmp_path):
-    from loi_do_sau.truc_tiep import hoi_dap
-    monkeypatch.setattr(hoi_dap, 'co_khoa', lambda: True)
-    assert type(_chay_noi_thang(monkeypatch, tmp_path, '--noi-thang')['hoi']) is hoi_dap.HoiGemini
-
-
-def test_khong_khoa_gemini_nhung_co_model_tren_may_van_bat_nut_hoi(monkeypatch, tmp_path):
+def test_co_model_tren_may_thi_nut_hoi_dung_may(monkeypatch, tmp_path):
     from loi_do_sau.truc_tiep import hoi_dap
 
     class _Tt:
@@ -342,13 +321,16 @@ def test_khong_khoa_gemini_nhung_co_model_tren_may_van_bat_nut_hoi(monkeypatch, 
         def terminate(self):
             self.tat = True
     tt = _Tt()
-    monkeypatch.setattr(hoi_dap, 'co_khoa', lambda: False)
     ghi = _chay_noi_thang(monkeypatch, tmp_path, '--noi-thang', bat_may_nhin=lambda thu_muc: (tt, True))
-    assert ghi['hoi'] is not None
+    assert isinstance(ghi['hoi'], hoi_dap.HoiTrenMay)
     assert tt.tat                                       # tắt máy chủ thì tắt luôn llama-server mình bật
 
 
-def test_khong_khoa_khong_model_tren_may_thi_tat_nut_hoi(monkeypatch, tmp_path):
-    from loi_do_sau.truc_tiep import hoi_dap
-    monkeypatch.setattr(hoi_dap, 'co_khoa', lambda: False)
+def test_khong_model_tren_may_thi_tat_nut_hoi(monkeypatch, tmp_path):
+    # 2026-11-11: đã gỡ Gemini; không có model trên máy thì không có gì để hỏi
     assert _chay_noi_thang(monkeypatch, tmp_path, '--noi-thang')['hoi'] is None
+
+
+def test_khong_con_co_hoi_gemini(monkeypatch, tmp_path):
+    with pytest.raises(SystemExit):
+        _chay_noi_thang(monkeypatch, tmp_path, '--noi-thang', '--hoi-gemini')

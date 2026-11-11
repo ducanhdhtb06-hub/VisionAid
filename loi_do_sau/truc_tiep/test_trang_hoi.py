@@ -61,7 +61,7 @@ def test_dung_lai_van_cat_ngang_cau_tra_loi():
     assert kq['daPhat'] == ['TL', 'DUNG'] and ['bi_cat', 1] in kq['phanHoi']
 
 
-# ---------- câu trả lời điện thoại tự đọc (Gemini đọc lỗi): giữ luật một người nói ----------
+# ---------- câu trả lời điện thoại tự đọc (model trên máy chỉ trả chữ): giữ luật một người nói ----------
 def test_dien_thoai_dang_tu_doc_thi_cau_thuong_cho_doc_xong():
     kq = _chay("""async function chay() {
       dangNoiTaiCho = true; luotTaiCho = 1;
