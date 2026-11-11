@@ -45,8 +45,10 @@ nền để chạy thử nhanh; các thành phần lấy từ dự án gốc s�
 | ![hành lang](docs/anh/quan_sat_hanh_lang.jpg) | ![biển xanh](docs/anh/quan_sat_bien_xanh.jpg) |
 
 Mọi câu nói và hình vẽ trong video là đầu ra thật của hệ thống trên video quay bằng điện thoại, không dựng giả.
-Phần quan sát trong video và ảnh demo được quay ngày 30/10, khi module 2 còn dùng Gemini; từ 11/11 module 2 chỉ dùng
-mô hình nhìn chạy trên máy (Qwen3-VL-2B), câu trả lời ngắn hơn và kém chi tiết hơn.
+GIF và ảnh module 2 ở trên xuất lại ngày 11/11 bằng mô hình nhìn chạy trên máy (Qwen3-VL-2B), mỗi câu hỏi chạy một
+lần, giữ nguyên kết quả (còn sai chính tả nhỏ khi đọc biển: "VIÊN THỐNG", "VNPPT"). Video module 2 bản mới (36 giây,
+có phụ đề câu hỏi và câu trả lời): [`docs/video/demo_module2_qwen.mp4`](docs/video/demo_module2_qwen.mp4). Video đầy đủ
+ở Releases quay ngày 30/10, phần quan sát trong đó còn dùng Gemini.
 
 ## App: điện thoại đóng vai kính
 

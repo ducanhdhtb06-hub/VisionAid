@@ -11,6 +11,7 @@ voice/
 *.pt
 *.ts
 *.mp4
+!docs/video/*.mp4
 *.MOV
 *.mov
 # Phiên thử trực tiếp (video camera, nhật ký): giữ ngoài git
