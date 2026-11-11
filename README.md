@@ -202,9 +202,6 @@ python -m loi_do_sau.truc_tiep.chay --noi-thang --trang-may-tinh
 
 Test máy chủ: `python -m pytest loi_do_sau/truc_tiep -q` (test cần video mẫu / giọng đọc / bản gốc tự bỏ qua khi thiếu).
 
-## Giấy phép
-
-Mã ở đây theo **MIT** (xem `LICENSE`; phần lấy từ dự án gốc giữ bản quyền AI-FanGe).
 
 ## Giới hạn đã biết
 
