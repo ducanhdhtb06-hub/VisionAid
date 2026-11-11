@@ -10,9 +10,7 @@
 
 ## Tác giả
 
-**VisionAid do Đặng Đức Anh phát triển.
-
-**Phần do tác giả phát triển:**
+**VisionAid do Đặng Đức Anh
 - **Module chỉ đường theo vạch:** đo hai mép vạch và độ lệch, luật nói "dịch trái/phải", bộ điều khiển vật chắn trên vạch
   (chọn bên đi vòng, "Đã về vạch", nhớ xe chắn khi xe che mép vạch), né vật cản bằng độ sâu, cảnh báo xe đang tới và
   lọc báo nhầm, ưu tiên câu gấp.
