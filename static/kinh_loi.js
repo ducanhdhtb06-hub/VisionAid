@@ -100,8 +100,9 @@ function noiTaiCho(chu) {
   } catch (e) {}
 }
 
-// Câu trả lời nút Hỏi (chữ, từ model nhìn trên máy tính): điện thoại tự
-// đọc. Vẫn một người nói: câu dẫn đường thường chờ đọc xong; "Dừng lại" và báo động cắt ngang.
+// Câu trả lời nút Hỏi (chữ, từ model nhìn trên máy tính): điện thoại tự đọc. Vẫn một người nói: MỌI câu dẫn đường,
+// kể cả "Dừng lại", chờ câu trả lời đọc xong (người dùng 2026-11-11: "phải đợi AI nói xong rồi mới nói cái khác";
+// thử trong phòng, "Dừng lại. Vật cản" cắt câu trả lời sau 0,5 s). Muốn ngắt câu trả lời: giữ nút Hỏi lần nữa.
 let dangNoiTaiCho = false, luotTaiCho = 0;
 function catTaiCho() {
   dangNoiTaiCho = false;
@@ -195,26 +196,25 @@ async function nhanWav(buf) {
     if (cauCho) guiPhanHoi('thay', cauCho.id, Date.now() - cauCho.t_chup);
     cauCho = p; return;
   }
-  if (dangNoiTaiCho && !dangPhat) {    // điện thoại đang tự đọc câu trả lời
-    if (!p.cau.startsWith('Dừng lại')) {
-      if (cauCho) guiPhanHoi('thay', cauCho.id, Date.now() - cauCho.t_chup);
-      cauCho = p; return;
-    }
-    catTaiCho();                       // "Dừng lại" cắt ngang câu trả lời
-  }
+  if (dangNoiTaiCho && !dangPhat) { giuCho(p); return; }   // điện thoại đang tự đọc câu trả lời: chờ đọc xong
   if (dangPhat) {
-    // đang nói: câu thường, hoặc "Dừng lại" khi đang nói "Dừng lại" -> giữ 1 câu chờ (mới nhất) phát sau
-    if (!p.cau.startsWith('Dừng lại') || dangPhat.cau.startsWith('Dừng lại')) {
-      // câu trả lời đang chờ không bị câu dẫn đường thường thay chỗ (người dùng đã chủ ý hỏi); "Dừng lại" vẫn cắt
-      if (cauCho && cauCho.hoi && !p.hoi) { guiPhanHoi('thay', p.id, Date.now() - p.t_chup); return; }
-      if (cauCho) guiPhanHoi('thay', cauCho.id, Date.now() - cauCho.t_chup);
-      cauCho = p; return;
-    }
+    // đang đọc câu trả lời nút Hỏi: không câu nào cắt ngang. Đang nói câu thường: câu thường, hoặc "Dừng lại" khi đang
+    // nói "Dừng lại" -> giữ 1 câu chờ phát sau; "Dừng lại" cắt ngang câu thường
+    if (dangPhat.hoi || !p.cau.startsWith('Dừng lại') || dangPhat.cau.startsWith('Dừng lại')) { giuCho(p); return; }
     const cu = dangPhat; dangPhat = null;                          // "Dừng lại" cắt ngang câu đang nói
     try { cu.nguon.onended = null; cu.nguon.stop(); } catch (e) {}
     guiPhanHoi('bi_cat', cu.id, Date.now() - cu.t_chup);
   }
   phat(p);
+}
+
+// Giữ một câu chờ phát sau. Câu quan trọng hơn không bị câu kém hơn chiếm chỗ: câu trả lời nút Hỏi (người dùng đã
+// chủ ý hỏi) > "Dừng lại" > câu dẫn đường thường. Câu bị bỏ báo 'thay' để máy chủ được nói lại nếu còn đúng.
+function giuCho(p) {
+  const hang = c => (c.hoi ? 2 : c.cau.startsWith('Dừng lại') ? 1 : 0);
+  if (cauCho && hang(cauCho) > hang(p)) { guiPhanHoi('thay', p.id, Date.now() - p.t_chup); return; }
+  if (cauCho) guiPhanHoi('thay', cauCho.id, Date.now() - cauCho.t_chup);
+  cauCho = p;
 }
 
 function phat(p) {
