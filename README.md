@@ -10,9 +10,7 @@
 
 ## Tác giả
 
-**VisionAid do Đặng Đức Anh phát triển.** Bản MVP này dùng dự án mã nguồn mở
-[OpenAIglasses_for_Navigation](https://github.com/AI-FanGe/OpenAIglasses_for_Navigation) (AI-FanGe, giấy phép MIT) làm
-nền để chạy thử nhanh; các thành phần lấy từ dự án gốc sẽ được thay bằng mã tự phát triển ở giai đoạn sau.
+**VisionAid do Đặng Đức Anh phát triển.
 
 **Phần do tác giả phát triển:**
 - **Module chỉ đường theo vạch:** đo hai mép vạch và độ lệch, luật nói "dịch trái/phải", bộ điều khiển vật chắn trên vạch
@@ -21,9 +19,6 @@ nền để chạy thử nhanh; các thành phần lấy từ dự án gốc s�
 - **Module quan sát môi trường:** nút Hỏi trên app, mô hình nhìn chạy trên máy (llama.cpp + Qwen3-VL-2B), công cụ thử
   trên video (`tools/thu_quan_sat.py`).
 - **Kính ESP32 ảo** để phát lại video như camera kính thật, bộ quét câu mâu thuẫn, bộ test (hơn 300 test), video demo.
-
-**Phần lấy từ dự án gốc:** luồng dẫn đường (`workflow_blindpath.py`), phát âm thanh (`audio_*.py`), nhận diện vạch qua đường
-(`crosswalk_awareness.py`) và khung ứng dụng.
 
 > **Bản thử nghiệm — CHƯA an toàn cho người dùng thật.** Mới kiểm trên video quay ở vỉa hè Hà Nội (phát lại như kính
 > ESP32), chưa thử với người khiếm thị đi thật. Luôn dùng kèm gậy.
@@ -175,10 +170,7 @@ cd OpenAIglasses_for_Navigation
 python -m pytest tests -q          # không cần GPU / model / khóa API
 ```
 
-Chạy thật trên camera cần thêm phần còn lại của dự án gốc
-[OpenAIglasses_for_Navigation](https://github.com/AI-FanGe/OpenAIglasses_for_Navigation) (máy chủ `app_main.py`,
-model phân đoạn vạch từ ModelScope `archifancy/AIGlasses_for_navigation`). Model độ sâu / nhận diện / lòng đường
-(Hugging Face) tự tải lần đầu chạy. Các công tắc chính (biến môi trường):
+
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
