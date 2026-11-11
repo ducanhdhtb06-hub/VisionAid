@@ -141,3 +141,47 @@ def test_lam_nong_tren_may_bang_anh_va_khong_nem_loi(monkeypatch):
     goi2 = []
     _client_may(monkeypatch, goi2, loi=_loi_ket_noi)
     asyncio.run(Q.lam_nong_tren_may())                       # chưa bật llama-server: chỉ in lỗi, không ném
+
+
+# 2026-11-11, iPhone thật: model 2B lặp một ý tới hết giới hạn token (620 ký tự, điện thoại đọc ~14 s)
+CAU_LAP = ("bên trái có một chiếc điện thoại, bên phải có một cái cốc, phía trước có một chiếc bàn, bên phải có một "
+           "chiếc điện thoại, bên phải có một cái điện thoại, " + "bên phải có một chiếc điện thoại, " * 15 +
+           "bên phải có một chiếc điện")
+
+
+def test_gon_cau_bo_y_lap_va_doan_cut():
+    g = Q.gon_cau(CAU_LAP)
+    assert g == ("bên trái có một chiếc điện thoại, bên phải có một cái cốc, phía trước có một chiếc bàn, "
+                 "bên phải có một chiếc điện thoại.")
+    assert len(g) < 130
+
+
+def test_gon_cau_giu_nguyen_cau_binh_thuong():
+    for c in ("bên trái có một chiếc giường, phía trước có một màn hình máy tính.",
+              "Phía trước là cầu thang. Bên phải có tay vịn."):
+        assert Q.gon_cau(c) == c
+    assert Q.gon_cau("") == ""
+
+
+def test_gon_cau_toi_da_hai_cau():
+    assert Q.gon_cau("Câu một. Câu hai. Câu ba.") == "Câu một. Câu hai."
+
+
+def test_mo_ta_tren_may_phat_lap_va_gon_cau(monkeypatch):
+    goi = []
+    _client_may(monkeypatch, goi)
+    monkeypatch.setattr(Q, "noi_dung", lambda jpeg, cau: [{"role": "user", "content": cau}])
+    asyncio.run(Q.mo_ta_tren_may(b"jpg", "?"))
+    kw = goi[0][2]
+    assert kw["temperature"] <= 0.3 and kw["extra_body"]["repeat_penalty"] > 1          # model 2B dễ lặp
+
+
+def test_mo_ta_tren_may_tra_cau_da_gon(monkeypatch):
+    class _Client:
+        def __init__(self, **kw):
+            self.chat = type("Chat", (), {"completions": self})()
+
+        async def create(self, **kw):
+            return _Tra(CAU_LAP)
+    monkeypatch.setattr(Q, "AsyncOpenAI", _Client)
+    assert asyncio.run(Q.mo_ta_tren_may(b"jpg", "?")) == Q.gon_cau(CAU_LAP)

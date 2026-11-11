@@ -31,7 +31,7 @@ function phatBuffer(buf, onXong) { const n = { buf, onended: onXong, stop() { th
 function guiPhanHoi(ph, id) { phanHoi.push([ph, id]); }
 function xong() { const n = dangPhat.nguon; n.onended && n.onended(); }
 async function toi(j, buf) { jsonCho = j; await nhanWav(buf); }
-""" + _ham('nhanWav') + _ham('phat') + _ham('catTaiCho') + _ham('xongTaiCho') + _ham('batDauIm') + \
+""" + _ham('nhanWav') + _ham('giuCho') + _ham('phat') + _ham('catTaiCho') + _ham('xongTaiCho') + _ham('batDauIm') + \
         _ham('hetIm') + kich_ban + "\nchay().then(() => console.log(JSON.stringify({ daPhat, phanHoi })));"
     return json.loads(subprocess.run([node, '-e', js], capture_output=True, text=True, check=True).stdout)
 
@@ -54,11 +54,13 @@ def test_cau_tra_loi_dang_cho_khong_bi_cau_thuong_thay_cho():
     assert ['thay', 3] in kq['phanHoi']
 
 
-def test_dung_lai_van_cat_ngang_cau_tra_loi():
+def test_dung_lai_cho_cau_tra_loi_doc_xong():
+    # người dùng 2026-11-11: "phải đợi AI nói xong rồi mới nói cái khác" — không câu nào cắt ngang câu trả lời
     kq = _chay("""async function chay() {
       await toi({ id: 1, t_chup: now, cau: 'Phía trước có ghế.', hoi: 'tra_loi' }, 'TL');
-      await toi({ id: 2, t_chup: now, cau: 'Dừng lại. Xe máy, phía trước, đang tới' }, 'DUNG'); }""")
-    assert kq['daPhat'] == ['TL', 'DUNG'] and ['bi_cat', 1] in kq['phanHoi']
+      await toi({ id: 2, t_chup: now, cau: 'Dừng lại. Xe máy, phía trước, đang tới' }, 'DUNG');
+      daPhat.push('|'); xong(); }""")
+    assert kq['daPhat'] == ['TL', '|', 'DUNG'] and ['bi_cat', 1] not in kq['phanHoi']
 
 
 # ---------- câu trả lời điện thoại tự đọc (model trên máy chỉ trả chữ): giữ luật một người nói ----------
@@ -70,11 +72,22 @@ def test_dien_thoai_dang_tu_doc_thi_cau_thuong_cho_doc_xong():
     assert kq['daPhat'] == ['|', 'V1']                  # không nói chồng lên câu trả lời; đọc xong mới phát
 
 
-def test_dung_lai_cat_ngang_dien_thoai_dang_tu_doc():
+def test_dung_lai_cho_dien_thoai_doc_xong_cau_tra_loi():
+    # 2026-11-11: thử trong phòng, "Dừng lại. Vật cản" cắt câu trả lời sau 0,5 s; người dùng muốn nghe hết câu trả lời
     kq = _chay("""async function chay() {
       dangNoiTaiCho = true; luotTaiCho = 1;
-      await toi({ id: 1, t_chup: now, cau: 'Dừng lại. Xe máy, phía trước, đang tới' }, 'DUNG'); }""")
-    assert kq['daPhat'] == ['HUY_TAI_CHO', 'DUNG']
+      await toi({ id: 1, t_chup: now, cau: 'Dừng lại. Xe máy, phía trước, đang tới' }, 'DUNG');
+      daPhat.push('|'); xongTaiCho(1); }""")
+    assert kq['daPhat'] == ['|', 'DUNG']                # không hủy câu đang đọc; đọc xong mới nói "Dừng lại"
+
+
+def test_dung_lai_dang_cho_khong_bi_cau_thuong_thay_cho():
+    kq = _chay("""async function chay() {
+      dangNoiTaiCho = true; luotTaiCho = 1;
+      await toi({ id: 1, t_chup: now, cau: 'Dừng lại. Vật cản' }, 'DUNG');
+      await toi({ id: 2, t_chup: now, cau: 'Vạch ở bên phải.' }, 'V2');
+      xongTaiCho(1); }""")
+    assert kq['daPhat'] == ['DUNG'] and ['thay', 2] in kq['phanHoi']
 
 
 def test_bao_xong_cua_luot_doc_cu_khong_lam_xong_luot_moi():

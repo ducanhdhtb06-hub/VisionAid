@@ -9,6 +9,7 @@ Câu trả lời là chữ: điện thoại (app VisionAid) tự đọc bằng g
 """
 import base64
 import os
+import re
 
 import numpy as np
 from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, InternalServerError
@@ -17,6 +18,13 @@ MAY_NHIN_URL = os.getenv("AIGLASS_MAY_NHIN_URL", "http://127.0.0.1:8090/v1")
 MAY_NHIN = "tren-may"                            # tên model gửi đi (llama-server bỏ qua tên model)
 MAY_NHIN_TOKEN = 150                             # chặn câu dài lan man của model nhỏ (chỉ dẫn đã dặn tối đa hai câu)
 HET_GIO = 20.0                                   # giây; quá thì báo lỗi thay vì treo
+# Model 2B hay lặp một ý tới hết giới hạn token (2026-11-11, iPhone thật: "bên phải có một chiếc điện thoại" x15,
+# 620 ký tự, điện thoại đọc ~14 s): độ ngẫu nhiên thấp + phạt lặp nhẹ khi sinh chữ, gon_cau() bỏ ý lặp sau khi sinh.
+# So trên 4 khung của phiên đó, mỗi khung 2 lần: mặc định của llama-server + phạt lặp mạnh: câu TB 158 ký tự, có bịa;
+# temperature 0.2 + repeat_penalty 1.1: TB 107 ký tự, 0,29 s, không lặp (thêm 8 lần trên khung từng lặp: 47–138 ký tự).
+PHAT_LAP = dict(temperature=0.2, extra_body={"repeat_penalty": 1.1})
+CAU_TOI_DA = 2                                   # chỉ dẫn đã dặn "tối đa hai câu"
+TU_DEM = {"một", "cái", "chiếc", "con", "những", "các"}   # bỏ khi so ý: "một cái điện thoại" = "một chiếc điện thoại"
 
 CHI_DAN = (
     "Bạn là trợ lý trên kính cho người khiếm thị, nhìn qua camera trên kính (ảnh kèm theo là những gì phía trước "
@@ -47,6 +55,38 @@ def noi_dung(jpeg, cau_hoi: str) -> list:
     return [{"role": "system", "content": CHI_DAN}, {"role": "user", "content": phan}]
 
 
+def _y(ve: str) -> str:
+    """Dạng so sánh của một vế câu: chữ thường, bỏ dấu câu và từ chỉ loại."""
+    return " ".join(w for w in re.findall(r"\w+", ve.lower()) if w not in TU_DEM)
+
+
+def gon_cau(cau: str, bi_cat: bool = False) -> str:
+    """Bỏ các vế lặp ý (cách nhau dấu phẩy), giữ tối đa CAU_TOI_DA câu. Vế cuối bị cắt giữa chừng (model hết token:
+    bi_cat, hoặc vế cuối chỉ là phần đầu của một vế đã có) cũng bỏ. Câu bình thường giữ nguyên."""
+    cau = (cau or "").strip()
+    if not cau:
+        return ""
+    cac_cau = re.split(r"(?<=[.!?])\s+", cau)[:CAU_TOI_DA]
+    da_co, ra = [], []
+    for i, c in enumerate(cac_cau):
+        dau = c[-1] if c[-1] in ".!?" else ""
+        ve = [v.strip() for v in c.rstrip(".!?").split(",") if v.strip()]
+        cuoi_cung = i == len(cac_cau) - 1
+        if cuoi_cung and not dau and len(ve) > 1:
+            y_cuoi = _y(ve[-1])
+            if bi_cat or any(y.startswith(y_cuoi) for y in map(_y, ve[:-1])):
+                ve = ve[:-1]                      # vế cuối bị cắt giữa chừng
+        giu = []
+        for v in ve:
+            y = _y(v)
+            if y and y not in da_co:
+                da_co.append(y)
+                giu.append(v)
+        if giu:
+            ra.append(", ".join(giu) + (dau or ("." if len(giu) < len(c.split(",")) else "")))
+    return " ".join(ra)
+
+
 def _client_may(timeout: float = HET_GIO):
     return AsyncOpenAI(api_key="khong-can", base_url=MAY_NHIN_URL, timeout=timeout, max_retries=0)
 
@@ -58,8 +98,9 @@ async def mo_ta_tren_may(jpeg, cau_hoi: str) -> str:
     while True:
         try:
             tra = await _client_may().chat.completions.create(
-                model=MAY_NHIN, messages=noi_dung(jpeg, cau_hoi), max_tokens=MAY_NHIN_TOKEN)
-            return (tra.choices[0].message.content or "").strip()
+                model=MAY_NHIN, messages=noi_dung(jpeg, cau_hoi), max_tokens=MAY_NHIN_TOKEN, **PHAT_LAP)
+            chon = tra.choices[0]
+            return gon_cau(chon.message.content or "", bi_cat=getattr(chon, "finish_reason", None) == "length")
         except (APITimeoutError, APIConnectionError, InternalServerError):
             lan += 1
             if lan > 1:
